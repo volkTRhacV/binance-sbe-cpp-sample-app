@@ -14,6 +14,7 @@
 #include "self_trade_prevention_modes.h"
 #include "spot_sbe/ExchangeMaxNumAlgoOrdersFilter.h"
 #include "spot_sbe/ExchangeMaxNumIcebergOrdersFilter.h"
+#include "spot_sbe/ExchangeMaxNumOrderListsFilter.h"
 #include "spot_sbe/ExchangeMaxNumOrdersFilter.h"
 #include "spot_sbe/FilterType.h"
 #include "spot_sbe/IcebergPartsFilter.h"
@@ -21,6 +22,8 @@
 #include "spot_sbe/MarketLotSizeFilter.h"
 #include "spot_sbe/MaxNumAlgoOrdersFilter.h"
 #include "spot_sbe/MaxNumIcebergOrdersFilter.h"
+#include "spot_sbe/MaxNumOrderAmendsFilter.h"
+#include "spot_sbe/MaxNumOrderListsFilter.h"
 #include "spot_sbe/MaxNumOrdersFilter.h"
 #include "spot_sbe/MaxPositionFilter.h"
 #include "spot_sbe/MessageHeader.h"
@@ -40,6 +43,7 @@
 
 using spot_sbe::ExchangeMaxNumAlgoOrdersFilter;
 using spot_sbe::ExchangeMaxNumIcebergOrdersFilter;
+using spot_sbe::ExchangeMaxNumOrderListsFilter;
 using spot_sbe::ExchangeMaxNumOrdersFilter;
 using spot_sbe::FilterType;
 using spot_sbe::IcebergPartsFilter;
@@ -47,6 +51,8 @@ using spot_sbe::LotSizeFilter;
 using spot_sbe::MarketLotSizeFilter;
 using spot_sbe::MaxNumAlgoOrdersFilter;
 using spot_sbe::MaxNumIcebergOrdersFilter;
+using spot_sbe::MaxNumOrderAmendsFilter;
+using spot_sbe::MaxNumOrderListsFilter;
 using spot_sbe::MaxNumOrdersFilter;
 using spot_sbe::MaxPositionFilter;
 using spot_sbe::MessageHeader;
@@ -87,7 +93,16 @@ struct ExchangeMaxNumIcebergOrders {
     explicit ExchangeMaxNumIcebergOrders(const int64_t value) : max_num_iceberg_orders{value} {}
 };
 
-typedef std::variant<ExchangeMaxNumOrders, ExchangeMaxNumAlgoOrders, ExchangeMaxNumIcebergOrders>
+struct ExchangeMaxNumOrderLists {
+    int64_t max_num_order_lists;
+
+    explicit ExchangeMaxNumOrderLists(const int64_t value) : max_num_order_lists{value} {}
+};
+
+typedef std::variant<ExchangeMaxNumOrders,
+                     ExchangeMaxNumAlgoOrders,
+                     ExchangeMaxNumIcebergOrders,
+                     ExchangeMaxNumOrderLists>
     ExchangeFilterData;
 
 struct ExchangeFilter {
@@ -112,6 +127,11 @@ ExchangeFilter make_exchange_filter(const MessageHeader& header, const std::span
             const auto filter_type = msg.filterType();
             return ExchangeFilter{filter_type,
                                   ExchangeMaxNumIcebergOrders{msg.maxNumIcebergOrders()}};
+        }
+        case ExchangeMaxNumOrderListsFilter::sbeTemplateId(): {
+            const auto msg = message_from_header<ExchangeMaxNumOrderListsFilter>(filter, header);
+            const auto filter_type = msg.filterType();
+            return ExchangeFilter{filter_type, ExchangeMaxNumOrderLists{msg.maxNumOrderLists()}};
         }
         default: {
             fprintf(stderr, "Unexpected exchange filter template ID %d\n", header.templateId());
@@ -233,6 +253,13 @@ struct SymbolMarketLotSizeFilter {
           step_size{decoder.stepSize(), qty_exponent} {}
 };
 
+struct SymbolMaxNumOrderAmendsFilter {
+    int64_t max_num_order_amends;
+
+    SymbolMaxNumOrderAmendsFilter(const MaxNumOrderAmendsFilter& decoder)
+        : max_num_order_amends{decoder.maxNumOrderAmends()} {}
+};
+
 struct SymbolMaxNumOrdersFilter {
     int64_t max_num_orders;
 
@@ -240,6 +267,13 @@ struct SymbolMaxNumOrdersFilter {
 
     SymbolMaxNumOrdersFilter(const MaxNumOrdersFilter& decoder)
         : max_num_orders{decoder.maxNumOrders()} {}
+};
+
+struct SymbolMaxNumOrderListsFilter {
+    int64_t max_num_order_lists;
+
+    SymbolMaxNumOrderListsFilter(const MaxNumOrderListsFilter& decoder)
+        : max_num_order_lists{decoder.maxNumOrderLists()} {}
 };
 
 struct SymbolMaxNumAlgoOrdersFilter {
@@ -297,7 +331,9 @@ typedef std::variant<SymbolPriceFilter,
                      SymbolNotionalFilter,
                      SymbolIcebergPartsFilter,
                      SymbolMarketLotSizeFilter,
+                     SymbolMaxNumOrderAmendsFilter,
                      SymbolMaxNumOrdersFilter,
+                     SymbolMaxNumOrderListsFilter,
                      SymbolMaxNumAlgoOrdersFilter,
                      SymbolMaxNumIcebergOrdersFilter,
                      SymbolMaxPositionFilter,
@@ -384,6 +420,16 @@ SymbolFilter make_symbol_filter(const MessageHeader& header, const std::span<cha
             const auto filter_type = msg.filterType();
             return SymbolFilter{filter_type, SymbolTPlusSellFilter{msg}};
         }
+        case MaxNumOrderListsFilter::sbeTemplateId(): {
+            const auto msg = message_from_header<MaxNumOrderListsFilter>(filter, header);
+            const auto filter_type = msg.filterType();
+            return SymbolFilter{filter_type, SymbolMaxNumOrderListsFilter{msg}};
+        }
+        case MaxNumOrderAmendsFilter::sbeTemplateId(): {
+            const auto msg = message_from_header<MaxNumOrderAmendsFilter>(filter, header);
+            const auto filter_type = msg.filterType();
+            return SymbolFilter{filter_type, SymbolMaxNumOrderAmendsFilter{msg}};
+        }
         default: {
             fprintf(stderr, "Unexpected symbol filter template ID %d\n", header.templateId());
             exit(1);
@@ -440,15 +486,18 @@ struct SymbolInfo {
     OrderTypes order_types;
     bool iceberg_allowed;
     bool oco_allowed;
+    bool oto_allowed;
     bool quote_order_qty_market_allowed;
     bool allow_trailing_stop;
     bool cancel_replace_allowed;
+    bool amend_allowed;
     bool is_spot_trading_allowed;
     bool is_margin_trading_allowed;
     SelfTradePreventionMode::Value default_self_trade_prevention_mode;
     SelfTradePreventionModes allowed_self_trade_prevention_modes;
+    std::optional<bool> peg_instructions_allowed;
     std::vector<SymbolFilter> filters;
-    std::vector<std::string> permissions;
+    std::vector<std::vector<std::string>> permissions_sets;
     std::string symbol;
     std::string base_asset;
     std::string quote_asset;

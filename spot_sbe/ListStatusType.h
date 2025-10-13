@@ -33,6 +33,8 @@ public:
         Response = static_cast<std::uint8_t>(0),
         ExecStarted = static_cast<std::uint8_t>(1),
         AllDone = static_cast<std::uint8_t>(2),
+        Updated = static_cast<std::uint8_t>(3),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -43,6 +45,8 @@ public:
             case static_cast<std::uint8_t>(0): return Response;
             case static_cast<std::uint8_t>(1): return ExecStarted;
             case static_cast<std::uint8_t>(2): return AllDone;
+            case static_cast<std::uint8_t>(3): return Updated;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -56,6 +60,8 @@ public:
             case Response: return "Response";
             case ExecStarted: return "ExecStarted";
             case AllDone: return "AllDone";
+            case Updated: return "Updated";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

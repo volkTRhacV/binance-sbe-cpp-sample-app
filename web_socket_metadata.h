@@ -30,10 +30,7 @@ struct WebSocketMetadata {
                       std::vector<RateLimit>&& rate_limits,
                       std::string&& id,
                       const std::span<char> result)
-        : status{status},
-          rate_limits{std::move(rate_limits)},
-          id{std::move(id)},
-          result{result} {}
+        : status{status}, rate_limits{std::move(rate_limits)}, id{std::move(id)}, result{result} {}
 };
 
 #endif

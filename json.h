@@ -1,6 +1,7 @@
 #ifndef _SBE_APP_JSON_H_
 #define _SBE_APP_JSON_H_
 
+#include <inttypes.h>
 #include <unistd.h>
 #include <array>
 #include <cassert>
@@ -91,8 +92,8 @@ void print_decimal(const char* const key,
     }
     const auto whole_part = mantissa / divisor;
     const auto frac_part = mantissa % divisor;
-    if (std::snprintf(buffer.data(), buffer.size(), "%s%ld.%0*ld", sign, whole_part, exponent,
-                      frac_part) < 0) {
+    if (std::snprintf(buffer.data(), buffer.size(), "%s%" PRIi64 ".%0*" PRIi64, sign, whole_part,
+                      exponent, frac_part) < 0) {
         fprintf(stderr, "Unexpected error printing decimal\n");
         exit(1);
     }
@@ -129,6 +130,10 @@ void print_json(const ExchangeMaxNumAlgoOrders& val) {
 
 void print_json(const ExchangeMaxNumIcebergOrders& val) {
     print_long("maxNumIcebergOrders", val.max_num_iceberg_orders, FieldPos::Last);
+}
+
+void print_json(const ExchangeMaxNumOrderLists& val) {
+    print_long("maxNumOrderLists", val.max_num_order_lists, FieldPos::Last);
 }
 
 void print_json(const SymbolPriceFilter& val) {
@@ -181,8 +186,16 @@ void print_json(const SymbolMarketLotSizeFilter& val) {
     print_decimal("stepSize", val.step_size, FieldPos::Last);
 }
 
+void print_json(const SymbolMaxNumOrderAmendsFilter& val) {
+    print_long("maxNumOrderAmends", val.max_num_order_amends, FieldPos::Last);
+}
+
 void print_json(const SymbolMaxNumOrdersFilter& val) {
     print_long("maxNumOrders", val.max_num_orders, FieldPos::Last);
+}
+
+void print_json(const SymbolMaxNumOrderListsFilter& val) {
+    print_long("maxNumOrderLists", val.max_num_order_lists, FieldPos::Last);
 }
 
 void print_json(const SymbolMaxNumAlgoOrdersFilter& val) {
@@ -223,6 +236,26 @@ void print_str_vec(const char* const key,
     for (const auto& str : str_vec) {
         printf("\"%s\"", str.c_str());
         if (&str != &str_vec.back()) {
+            printf(",");
+        }
+    }
+    printf("]%s", pos == FieldPos::Default ? "," : "");
+}
+
+void print_str_vec_vec(const char* const key,
+                       const std::vector<std::vector<std::string>>& str_vec,
+                       const FieldPos pos = FieldPos::Default) {
+    printf("\"%s\":[", key);
+    for (const auto& vec : str_vec) {
+        printf("[");
+        for (const auto& str : vec) {
+            printf("\"%s\"", str.c_str());
+            if (&str != &vec.back()) {
+                printf(",");
+            }
+        }
+        printf("]");
+        if (&vec != &str_vec.back()) {
             printf(",");
         }
     }
@@ -283,6 +316,12 @@ void print_json(const SelfTradePreventionModes& val, const FieldPos pos = FieldP
     if (val.contains(SelfTradePreventionModes::ExpireBoth)) {
         allowed_modes.push_back("ExpireBoth");
     }
+    if (val.contains(SelfTradePreventionModes::Decrement)) {
+        allowed_modes.push_back("Decrement");
+    }
+    if (val.contains(SelfTradePreventionModes::NonRepresentable)) {
+        allowed_modes.push_back("NonRepresentable");
+    }
     print_str_vec("allowedSelfTradePreventionModes", allowed_modes, pos);
 }
 
@@ -299,13 +338,18 @@ void print_json(const SymbolInfo& symbol) {
     print_json(symbol.order_types);
     print_bool("icebergAllowed", symbol.iceberg_allowed);
     print_bool("ocoAllowed", symbol.oco_allowed);
+    print_bool("otoAllowed", symbol.oto_allowed);
     print_bool("quoteOrderQtyMarketAllowed", symbol.quote_order_qty_market_allowed);
     print_bool("allowTrailingStop", symbol.allow_trailing_stop);
     print_bool("cancelReplaceAllowed", symbol.cancel_replace_allowed);
+    print_bool("amendAllowed", symbol.amend_allowed);
+    if (symbol.peg_instructions_allowed) {
+        print_bool("pegInstructionsAllowed", *symbol.peg_instructions_allowed);
+    }
     print_bool("isSpotTradingAllowed", symbol.is_spot_trading_allowed);
     print_bool("isMarginTradingAllowed", symbol.is_margin_trading_allowed);
     print_json_vec("filters", symbol.filters);
-    print_str_vec("permissions", symbol.permissions);
+    print_str_vec_vec("permissionsSets", symbol.permissions_sets);
     print_str("defaultSelfTradePreventionMode",
               SelfTradePreventionMode::c_str(symbol.default_self_trade_prevention_mode));
     print_json(symbol.allowed_self_trade_prevention_modes, FieldPos::Last);

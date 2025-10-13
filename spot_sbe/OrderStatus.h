@@ -38,7 +38,9 @@ public:
         Rejected = static_cast<std::uint8_t>(5),
         Expired = static_cast<std::uint8_t>(6),
         ExpiredInMatch = static_cast<std::uint8_t>(9),
-        Unknown = static_cast<std::uint8_t>(254),
+        PendingNew = static_cast<std::uint8_t>(11),
+        Unknown = static_cast<std::uint8_t>(253),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -54,7 +56,9 @@ public:
             case static_cast<std::uint8_t>(5): return Rejected;
             case static_cast<std::uint8_t>(6): return Expired;
             case static_cast<std::uint8_t>(9): return ExpiredInMatch;
-            case static_cast<std::uint8_t>(254): return Unknown;
+            case static_cast<std::uint8_t>(11): return PendingNew;
+            case static_cast<std::uint8_t>(253): return Unknown;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -73,7 +77,9 @@ public:
             case Rejected: return "Rejected";
             case Expired: return "Expired";
             case ExpiredInMatch: return "ExpiredInMatch";
+            case PendingNew: return "PendingNew";
             case Unknown: return "Unknown";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

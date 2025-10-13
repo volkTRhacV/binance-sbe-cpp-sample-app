@@ -129,7 +129,8 @@ ExchangeInfo decode_exchange_info(const std::span<char> payload,
     auto& rate_limits = exchange_info.rateLimits();
     result.rate_limits.reserve(rate_limits.count());
     rate_limits.forEach([&](const auto& rate_limit) {
-        // Read buffer into intermediate variables to ensure the buffer is being read sequentially.
+        // Read buffer into intermediate variables to ensure the buffer is being
+        // read sequentially.
         const auto rate_limit_type = rate_limit.rateLimitType();
         const auto interval = rate_limit.interval();
         const auto interval_num = rate_limit.intervalNum();
@@ -158,14 +159,20 @@ ExchangeInfo decode_exchange_info(const std::span<char> payload,
         const OrderTypes order_types(symbol.orderTypes());
         const auto iceberg_allowed = as_bool(symbol.icebergAllowed());
         const auto oco_allowed = as_bool(symbol.ocoAllowed());
+        const auto oto_allowed = as_bool(symbol.otoAllowed());
         const auto quote_order_qty_market_allowed = as_bool(symbol.quoteOrderQtyMarketAllowed());
         const auto allow_trailing_stop = as_bool(symbol.allowTrailingStop());
         const auto cancel_replace_allowed = as_bool(symbol.cancelReplaceAllowed());
+        const auto amend_allowed = as_bool(symbol.amendAllowed());
         const auto is_spot_trading_allowed = as_bool(symbol.isSpotTradingAllowed());
         const auto is_margin_trading_allowed = as_bool(symbol.isMarginTradingAllowed());
         const auto default_self_trade_prevention_mode = symbol.defaultSelfTradePreventionMode();
         const SelfTradePreventionModes allowed_self_trade_prevention_modes(
             symbol.allowedSelfTradePreventionModes());
+        std::optional<bool> peg_instructions_allowed;
+        if (symbol.pegInstructionsAllowed() != BoolEnum::Value::NULL_VALUE) {
+            peg_instructions_allowed = as_bool(symbol.pegInstructionsAllowed());
+        }
         auto& filters = symbol.filters();
 
         std::vector<SymbolFilter> symbol_filters;
@@ -178,11 +185,14 @@ ExchangeInfo decode_exchange_info(const std::span<char> payload,
                 make_symbol_filter(message_header, std::span{filter_data, filter_size}));
         });
 
-        auto& permissions = symbol.permissions();
-        std::vector<std::string> symbol_permissions;
-        symbol_permissions.reserve(permissions.count());
-        permissions.forEach([&](auto& permission) {
-            symbol_permissions.push_back(permission.getPermissionAsString());
+        std::vector<std::vector<std::string>> all_permissions;
+        auto& permission_sets = symbol.permissionSets();
+        permission_sets.forEach([&](auto& perm_set) {
+            std::vector<std::string> symbol_permissions;
+            auto& perms = perm_set.permissions();
+            perms.forEach(
+                [&](auto& perm) { symbol_permissions.push_back(perm.getPermissionAsString()); });
+            all_permissions.push_back(std::move(symbol_permissions));
         });
 
         std::string symbol_str = symbol.getSymbolAsString();
@@ -198,15 +208,18 @@ ExchangeInfo decode_exchange_info(const std::span<char> payload,
             std::move(order_types),
             iceberg_allowed,
             oco_allowed,
+            oto_allowed,
             quote_order_qty_market_allowed,
             allow_trailing_stop,
             cancel_replace_allowed,
+            amend_allowed,
             is_spot_trading_allowed,
             is_margin_trading_allowed,
             default_self_trade_prevention_mode,
             allowed_self_trade_prevention_modes,
+            peg_instructions_allowed,
             std::move(symbol_filters),
-            std::move(symbol_permissions),
+            std::move(all_permissions),
             std::move(symbol_str),
             std::move(base_asset),
             std::move(quote_asset),
@@ -293,6 +306,22 @@ GetOrder decode_get_order(const std::span<char> payload, const MessageHeader& me
         result.prevented_quantity = Decimal{prevented_quantity, qty_exponent};
     }
     result.used_sor = get_order.usedSor();
+    const auto peg_price_type = get_order.pegPriceType();
+    if (peg_price_type != PegPriceType::NULL_VALUE) {
+        result.peg_price_type = peg_price_type;
+    }
+    const auto peg_offset_type = get_order.pegOffsetType();
+    if (peg_offset_type != PegOffsetType::NULL_VALUE) {
+        result.peg_offset_type = peg_offset_type;
+    }
+    const auto peg_offset_value = get_order.pegOffsetValue();
+    if (peg_offset_value != OrderResponse::pegOffsetValueNullValue()) {
+        result.peg_offset_value = peg_offset_value;
+    }
+    const auto pegged_price = get_order.peggedPrice();
+    if (pegged_price != OrderResponse::peggedPriceNullValue()) {
+        result.pegged_price = Decimal{pegged_price, price_exponent};
+    }
     result.symbol = get_order.getSymbolAsString();
     result.client_order_id = get_order.getClientOrderIdAsString();
     return result;
@@ -371,6 +400,24 @@ NewOrder decode_post_order(const std::span<char> payload, const MessageHeader& m
     }
 
     result.used_sor = post_order.usedSor();
+    result.orig_quote_order_qty = Decimal{post_order.origQuoteOrderQty(), price_exponent};
+
+    const auto peg_price_type = post_order.pegPriceType();
+    if (peg_price_type != PegPriceType::NULL_VALUE) {
+        result.peg_price_type = peg_price_type;
+    }
+    const auto peg_offset_type = post_order.pegOffsetType();
+    if (peg_offset_type != PegOffsetType::NULL_VALUE) {
+        result.peg_offset_type = peg_offset_type;
+    }
+    const auto peg_offset_value = post_order.pegOffsetValue();
+    if (peg_offset_value != OrderResponse::pegOffsetValueNullValue()) {
+        result.peg_offset_value = peg_offset_value;
+    }
+    const auto pegged_price = post_order.peggedPrice();
+    if (pegged_price != OrderResponse::peggedPriceNullValue()) {
+        result.pegged_price = Decimal{pegged_price, price_exponent};
+    }
     result.symbol = post_order.getSymbolAsString();
     result.client_order_id = post_order.getClientOrderIdAsString();
     return result;

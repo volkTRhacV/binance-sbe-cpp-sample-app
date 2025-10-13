@@ -32,6 +32,7 @@ public:
     {
         Unknown = static_cast<std::uint8_t>(0),
         Sor = static_cast<std::uint8_t>(2),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -41,6 +42,7 @@ public:
         {
             case static_cast<std::uint8_t>(0): return Unknown;
             case static_cast<std::uint8_t>(2): return Sor;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -53,6 +55,7 @@ public:
         {
             case Unknown: return "Unknown";
             case Sor: return "Sor";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

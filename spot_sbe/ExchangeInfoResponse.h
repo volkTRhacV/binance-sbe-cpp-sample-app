@@ -13,8 +13,18 @@
 #if __cplusplus >= 201703L
 #  include <string_view>
 #  define SBE_NODISCARD [[nodiscard]]
+#  if !defined(SBE_USE_STRING_VIEW)
+#    define SBE_USE_STRING_VIEW 1
+#  endif
 #else
 #  define SBE_NODISCARD
+#endif
+
+#if __cplusplus >= 202002L
+#  include <span>
+#  if !defined(SBE_USE_SPAN)
+#    define SBE_USE_SPAN 1
+#  endif
 #endif
 
 #if !defined(__STDC_LIMIT_MACROS)
@@ -83,9 +93,11 @@
 #include "OrderType.h"
 #include "VarString.h"
 #include "MatchType.h"
+#include "ExecutionType.h"
 #include "BoolEnum.h"
 #include "OrderStatus.h"
 #include "GroupSizeEncoding.h"
+#include "PegPriceType.h"
 #include "GroupSize16Encoding.h"
 #include "OptionalMessageData.h"
 #include "ContingencyType.h"
@@ -111,6 +123,7 @@
 #include "RateLimitType.h"
 #include "MessageData16.h"
 #include "FilterType.h"
+#include "PegOffsetType.h"
 #include "VarString8.h"
 #include "MessageData.h"
 
@@ -132,10 +145,10 @@ private:
     }
 
 public:
-    static const std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(0);
-    static const std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(103);
-    static const std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(1);
-    static const std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(0);
+    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(0);
+    static constexpr std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(103);
+    static constexpr std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(3);
+    static constexpr std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(1);
     static constexpr const char* SBE_SEMANTIC_VERSION = "5.2";
 
     enum MetaAttribute
@@ -205,12 +218,12 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaId() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(1);
+        return static_cast<std::uint16_t>(3);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaVersion() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(0);
+        return static_cast<std::uint16_t>(1);
     }
 
     SBE_NODISCARD static const char *sbeSemanticVersion() SBE_NOEXCEPT
@@ -306,7 +319,7 @@ public:
 
     SBE_NODISCARD std::uint64_t decodeLength() const
     {
-        ExchangeInfoResponse skipper(m_buffer, m_offset, m_bufferLength, sbeBlockLength(), m_actingVersion);
+        ExchangeInfoResponse skipper(m_buffer, m_offset, m_bufferLength, m_actingBlockLength, m_actingVersion);
         skipper.skip();
         return skipper.encodedLength();
     }
@@ -410,6 +423,11 @@ public:
         static SBE_CONSTEXPR std::uint64_t sbeBlockLength() SBE_NOEXCEPT
         {
             return 11;
+        }
+
+        SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+        {
+            return m_blockLength;
         }
 
         SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
@@ -874,6 +892,11 @@ public:
             return 0;
         }
 
+        SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+        {
+            return m_blockLength;
+        }
+
         SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
         {
             return *m_positionPtr;
@@ -1250,11 +1273,11 @@ public:
             m_buffer = buffer;
             m_bufferLength = bufferLength;
             GroupSizeEncoding dimensions(buffer, *pos, bufferLength, actingVersion);
-            dimensions.blockLength(static_cast<std::uint16_t>(16));
+            dimensions.blockLength(static_cast<std::uint16_t>(19));
             dimensions.numInGroup(static_cast<std::uint32_t>(count));
             m_index = 0;
             m_count = count;
-            m_blockLength = 16;
+            m_blockLength = 19;
             m_actingVersion = actingVersion;
             m_initialPosition = *pos;
             m_positionPtr = pos;
@@ -1268,7 +1291,12 @@ public:
 
         static SBE_CONSTEXPR std::uint64_t sbeBlockLength() SBE_NOEXCEPT
         {
-            return 16;
+            return 19;
+        }
+
+        SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+        {
+            return m_blockLength;
         }
 
         SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
@@ -1797,6 +1825,61 @@ public:
             return *this;
         }
 
+        SBE_NODISCARD static const char *otoAllowedMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+        {
+            switch (metaAttribute)
+            {
+                case MetaAttribute::PRESENCE: return "required";
+                default: return "";
+            }
+        }
+
+        static SBE_CONSTEXPR std::uint16_t otoAllowedId() SBE_NOEXCEPT
+        {
+            return 9;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t otoAllowedSinceVersion() SBE_NOEXCEPT
+        {
+            return 0;
+        }
+
+        SBE_NODISCARD bool otoAllowedInActingVersion() SBE_NOEXCEPT
+        {
+            return true;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t otoAllowedEncodingOffset() SBE_NOEXCEPT
+        {
+            return 9;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t otoAllowedEncodingLength() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD std::uint8_t otoAllowedRaw() const SBE_NOEXCEPT
+        {
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 9, sizeof(std::uint8_t));
+            return (val);
+        }
+
+        SBE_NODISCARD BoolEnum::Value otoAllowed() const
+        {
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 9, sizeof(std::uint8_t));
+            return BoolEnum::get((val));
+        }
+
+        Symbols &otoAllowed(const BoolEnum::Value value) SBE_NOEXCEPT
+        {
+            std::uint8_t val = (value);
+            std::memcpy(m_buffer + m_offset + 9, &val, sizeof(std::uint8_t));
+            return *this;
+        }
+
         SBE_NODISCARD static const char *quoteOrderQtyMarketAllowedMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
         {
             switch (metaAttribute)
@@ -1808,7 +1891,7 @@ public:
 
         static SBE_CONSTEXPR std::uint16_t quoteOrderQtyMarketAllowedId() SBE_NOEXCEPT
         {
-            return 9;
+            return 10;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t quoteOrderQtyMarketAllowedSinceVersion() SBE_NOEXCEPT
@@ -1823,7 +1906,7 @@ public:
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t quoteOrderQtyMarketAllowedEncodingOffset() SBE_NOEXCEPT
         {
-            return 9;
+            return 10;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t quoteOrderQtyMarketAllowedEncodingLength() SBE_NOEXCEPT
@@ -1834,21 +1917,21 @@ public:
         SBE_NODISCARD std::uint8_t quoteOrderQtyMarketAllowedRaw() const SBE_NOEXCEPT
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 9, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 10, sizeof(std::uint8_t));
             return (val);
         }
 
         SBE_NODISCARD BoolEnum::Value quoteOrderQtyMarketAllowed() const
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 9, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 10, sizeof(std::uint8_t));
             return BoolEnum::get((val));
         }
 
         Symbols &quoteOrderQtyMarketAllowed(const BoolEnum::Value value) SBE_NOEXCEPT
         {
             std::uint8_t val = (value);
-            std::memcpy(m_buffer + m_offset + 9, &val, sizeof(std::uint8_t));
+            std::memcpy(m_buffer + m_offset + 10, &val, sizeof(std::uint8_t));
             return *this;
         }
 
@@ -1863,7 +1946,7 @@ public:
 
         static SBE_CONSTEXPR std::uint16_t allowTrailingStopId() SBE_NOEXCEPT
         {
-            return 10;
+            return 11;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t allowTrailingStopSinceVersion() SBE_NOEXCEPT
@@ -1878,7 +1961,7 @@ public:
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t allowTrailingStopEncodingOffset() SBE_NOEXCEPT
         {
-            return 10;
+            return 11;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t allowTrailingStopEncodingLength() SBE_NOEXCEPT
@@ -1889,21 +1972,21 @@ public:
         SBE_NODISCARD std::uint8_t allowTrailingStopRaw() const SBE_NOEXCEPT
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 10, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 11, sizeof(std::uint8_t));
             return (val);
         }
 
         SBE_NODISCARD BoolEnum::Value allowTrailingStop() const
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 10, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 11, sizeof(std::uint8_t));
             return BoolEnum::get((val));
         }
 
         Symbols &allowTrailingStop(const BoolEnum::Value value) SBE_NOEXCEPT
         {
             std::uint8_t val = (value);
-            std::memcpy(m_buffer + m_offset + 10, &val, sizeof(std::uint8_t));
+            std::memcpy(m_buffer + m_offset + 11, &val, sizeof(std::uint8_t));
             return *this;
         }
 
@@ -1918,7 +2001,7 @@ public:
 
         static SBE_CONSTEXPR std::uint16_t cancelReplaceAllowedId() SBE_NOEXCEPT
         {
-            return 11;
+            return 12;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t cancelReplaceAllowedSinceVersion() SBE_NOEXCEPT
@@ -1933,7 +2016,7 @@ public:
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t cancelReplaceAllowedEncodingOffset() SBE_NOEXCEPT
         {
-            return 11;
+            return 12;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t cancelReplaceAllowedEncodingLength() SBE_NOEXCEPT
@@ -1944,21 +2027,76 @@ public:
         SBE_NODISCARD std::uint8_t cancelReplaceAllowedRaw() const SBE_NOEXCEPT
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 11, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 12, sizeof(std::uint8_t));
             return (val);
         }
 
         SBE_NODISCARD BoolEnum::Value cancelReplaceAllowed() const
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 11, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 12, sizeof(std::uint8_t));
             return BoolEnum::get((val));
         }
 
         Symbols &cancelReplaceAllowed(const BoolEnum::Value value) SBE_NOEXCEPT
         {
             std::uint8_t val = (value);
-            std::memcpy(m_buffer + m_offset + 11, &val, sizeof(std::uint8_t));
+            std::memcpy(m_buffer + m_offset + 12, &val, sizeof(std::uint8_t));
+            return *this;
+        }
+
+        SBE_NODISCARD static const char *amendAllowedMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+        {
+            switch (metaAttribute)
+            {
+                case MetaAttribute::PRESENCE: return "required";
+                default: return "";
+            }
+        }
+
+        static SBE_CONSTEXPR std::uint16_t amendAllowedId() SBE_NOEXCEPT
+        {
+            return 13;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t amendAllowedSinceVersion() SBE_NOEXCEPT
+        {
+            return 0;
+        }
+
+        SBE_NODISCARD bool amendAllowedInActingVersion() SBE_NOEXCEPT
+        {
+            return true;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t amendAllowedEncodingOffset() SBE_NOEXCEPT
+        {
+            return 13;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t amendAllowedEncodingLength() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD std::uint8_t amendAllowedRaw() const SBE_NOEXCEPT
+        {
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 13, sizeof(std::uint8_t));
+            return (val);
+        }
+
+        SBE_NODISCARD BoolEnum::Value amendAllowed() const
+        {
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 13, sizeof(std::uint8_t));
+            return BoolEnum::get((val));
+        }
+
+        Symbols &amendAllowed(const BoolEnum::Value value) SBE_NOEXCEPT
+        {
+            std::uint8_t val = (value);
+            std::memcpy(m_buffer + m_offset + 13, &val, sizeof(std::uint8_t));
             return *this;
         }
 
@@ -1973,7 +2111,7 @@ public:
 
         static SBE_CONSTEXPR std::uint16_t isSpotTradingAllowedId() SBE_NOEXCEPT
         {
-            return 12;
+            return 14;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t isSpotTradingAllowedSinceVersion() SBE_NOEXCEPT
@@ -1988,7 +2126,7 @@ public:
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t isSpotTradingAllowedEncodingOffset() SBE_NOEXCEPT
         {
-            return 12;
+            return 14;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t isSpotTradingAllowedEncodingLength() SBE_NOEXCEPT
@@ -1999,21 +2137,21 @@ public:
         SBE_NODISCARD std::uint8_t isSpotTradingAllowedRaw() const SBE_NOEXCEPT
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 12, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 14, sizeof(std::uint8_t));
             return (val);
         }
 
         SBE_NODISCARD BoolEnum::Value isSpotTradingAllowed() const
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 12, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 14, sizeof(std::uint8_t));
             return BoolEnum::get((val));
         }
 
         Symbols &isSpotTradingAllowed(const BoolEnum::Value value) SBE_NOEXCEPT
         {
             std::uint8_t val = (value);
-            std::memcpy(m_buffer + m_offset + 12, &val, sizeof(std::uint8_t));
+            std::memcpy(m_buffer + m_offset + 14, &val, sizeof(std::uint8_t));
             return *this;
         }
 
@@ -2028,7 +2166,7 @@ public:
 
         static SBE_CONSTEXPR std::uint16_t isMarginTradingAllowedId() SBE_NOEXCEPT
         {
-            return 13;
+            return 15;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t isMarginTradingAllowedSinceVersion() SBE_NOEXCEPT
@@ -2043,7 +2181,7 @@ public:
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t isMarginTradingAllowedEncodingOffset() SBE_NOEXCEPT
         {
-            return 13;
+            return 15;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t isMarginTradingAllowedEncodingLength() SBE_NOEXCEPT
@@ -2054,21 +2192,21 @@ public:
         SBE_NODISCARD std::uint8_t isMarginTradingAllowedRaw() const SBE_NOEXCEPT
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 13, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 15, sizeof(std::uint8_t));
             return (val);
         }
 
         SBE_NODISCARD BoolEnum::Value isMarginTradingAllowed() const
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 13, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 15, sizeof(std::uint8_t));
             return BoolEnum::get((val));
         }
 
         Symbols &isMarginTradingAllowed(const BoolEnum::Value value) SBE_NOEXCEPT
         {
             std::uint8_t val = (value);
-            std::memcpy(m_buffer + m_offset + 13, &val, sizeof(std::uint8_t));
+            std::memcpy(m_buffer + m_offset + 15, &val, sizeof(std::uint8_t));
             return *this;
         }
 
@@ -2083,7 +2221,7 @@ public:
 
         static SBE_CONSTEXPR std::uint16_t defaultSelfTradePreventionModeId() SBE_NOEXCEPT
         {
-            return 14;
+            return 16;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t defaultSelfTradePreventionModeSinceVersion() SBE_NOEXCEPT
@@ -2098,7 +2236,7 @@ public:
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t defaultSelfTradePreventionModeEncodingOffset() SBE_NOEXCEPT
         {
-            return 14;
+            return 16;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t defaultSelfTradePreventionModeEncodingLength() SBE_NOEXCEPT
@@ -2109,21 +2247,21 @@ public:
         SBE_NODISCARD std::uint8_t defaultSelfTradePreventionModeRaw() const SBE_NOEXCEPT
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 14, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 16, sizeof(std::uint8_t));
             return (val);
         }
 
         SBE_NODISCARD SelfTradePreventionMode::Value defaultSelfTradePreventionMode() const
         {
             std::uint8_t val;
-            std::memcpy(&val, m_buffer + m_offset + 14, sizeof(std::uint8_t));
+            std::memcpy(&val, m_buffer + m_offset + 16, sizeof(std::uint8_t));
             return SelfTradePreventionMode::get((val));
         }
 
         Symbols &defaultSelfTradePreventionMode(const SelfTradePreventionMode::Value value) SBE_NOEXCEPT
         {
             std::uint8_t val = (value);
-            std::memcpy(m_buffer + m_offset + 14, &val, sizeof(std::uint8_t));
+            std::memcpy(m_buffer + m_offset + 16, &val, sizeof(std::uint8_t));
             return *this;
         }
 
@@ -2138,7 +2276,7 @@ public:
 
         static SBE_CONSTEXPR std::uint16_t allowedSelfTradePreventionModesId() SBE_NOEXCEPT
         {
-            return 15;
+            return 17;
         }
 
         SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t allowedSelfTradePreventionModesSinceVersion() SBE_NOEXCEPT
@@ -2153,7 +2291,7 @@ public:
 
         SBE_NODISCARD static SBE_CONSTEXPR std::size_t allowedSelfTradePreventionModesEncodingOffset() SBE_NOEXCEPT
         {
-            return 15;
+            return 17;
         }
 
     private:
@@ -2162,13 +2300,78 @@ public:
     public:
         SBE_NODISCARD AllowedSelfTradePreventionModes &allowedSelfTradePreventionModes()
         {
-            m_allowedSelfTradePreventionModes.wrap(m_buffer, m_offset + 15, m_actingVersion, m_bufferLength);
+            m_allowedSelfTradePreventionModes.wrap(m_buffer, m_offset + 17, m_actingVersion, m_bufferLength);
             return m_allowedSelfTradePreventionModes;
         }
 
         static SBE_CONSTEXPR std::size_t allowedSelfTradePreventionModesEncodingLength() SBE_NOEXCEPT
         {
             return 1;
+        }
+
+        SBE_NODISCARD static const char *pegInstructionsAllowedMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+        {
+            switch (metaAttribute)
+            {
+                case MetaAttribute::PRESENCE: return "optional";
+                default: return "";
+            }
+        }
+
+        static SBE_CONSTEXPR std::uint16_t pegInstructionsAllowedId() SBE_NOEXCEPT
+        {
+            return 18;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t pegInstructionsAllowedSinceVersion() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD bool pegInstructionsAllowedInActingVersion() SBE_NOEXCEPT
+        {
+            return m_actingVersion >= pegInstructionsAllowedSinceVersion();
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t pegInstructionsAllowedEncodingOffset() SBE_NOEXCEPT
+        {
+            return 18;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t pegInstructionsAllowedEncodingLength() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD std::uint8_t pegInstructionsAllowedRaw() const SBE_NOEXCEPT
+        {
+            if (m_actingVersion < 1)
+            {
+                return static_cast<std::uint8_t>(255);
+            }
+
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 18, sizeof(std::uint8_t));
+            return (val);
+        }
+
+        SBE_NODISCARD BoolEnum::Value pegInstructionsAllowed() const
+        {
+            if (m_actingVersion < 1)
+            {
+                return BoolEnum::NULL_VALUE;
+            }
+
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 18, sizeof(std::uint8_t));
+            return BoolEnum::get((val));
+        }
+
+        Symbols &pegInstructionsAllowed(const BoolEnum::Value value) SBE_NOEXCEPT
+        {
+            std::uint8_t val = (value);
+            std::memcpy(m_buffer + m_offset + 18, &val, sizeof(std::uint8_t));
+            return *this;
         }
 
         class Filters
@@ -2250,6 +2453,11 @@ public:
             static SBE_CONSTEXPR std::uint64_t sbeBlockLength() SBE_NOEXCEPT
             {
                 return 0;
+            }
+
+            SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+            {
+                return m_blockLength;
             }
 
             SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
@@ -2568,7 +2776,7 @@ public:
             return true;
         }
 
-        class Permissions
+        class PermissionSets
         {
         private:
             char *m_buffer = nullptr;
@@ -2587,7 +2795,7 @@ public:
             }
 
         public:
-            Permissions() = default;
+            PermissionSets() = default;
 
             inline void wrapForDecode(
                 char *buffer,
@@ -2649,6 +2857,11 @@ public:
                 return 0;
             }
 
+            SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+            {
+                return m_blockLength;
+            }
+
             SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
             {
                 return *m_positionPtr;
@@ -2679,7 +2892,7 @@ public:
                 return m_index < m_count;
             }
 
-            inline Permissions &next()
+            inline PermissionSets &next()
             {
                 if (m_index >= m_count)
                 {
@@ -2714,189 +2927,429 @@ public:
             }
 
 
-            SBE_NODISCARD static const char *permissionMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+            class Permissions
             {
-                switch (metaAttribute)
+            private:
+                char *m_buffer = nullptr;
+                std::uint64_t m_bufferLength = 0;
+                std::uint64_t m_initialPosition = 0;
+                std::uint64_t *m_positionPtr = nullptr;
+                std::uint64_t m_blockLength = 0;
+                std::uint64_t m_count = 0;
+                std::uint64_t m_index = 0;
+                std::uint64_t m_offset = 0;
+                std::uint64_t m_actingVersion = 0;
+
+                SBE_NODISCARD std::uint64_t *sbePositionPtr() SBE_NOEXCEPT
                 {
-                    case MetaAttribute::PRESENCE: return "required";
-                    default: return "";
+                    return m_positionPtr;
                 }
-            }
 
-            static const char *permissionCharacterEncoding() SBE_NOEXCEPT
+            public:
+                Permissions() = default;
+
+                inline void wrapForDecode(
+                    char *buffer,
+                    std::uint64_t *pos,
+                    const std::uint64_t actingVersion,
+                    const std::uint64_t bufferLength)
+                {
+                    GroupSizeEncoding dimensions(buffer, *pos, bufferLength, actingVersion);
+                    m_buffer = buffer;
+                    m_bufferLength = bufferLength;
+                    m_blockLength = dimensions.blockLength();
+                    m_count = dimensions.numInGroup();
+                    m_index = 0;
+                    m_actingVersion = actingVersion;
+                    m_initialPosition = *pos;
+                    m_positionPtr = pos;
+                    *m_positionPtr = *m_positionPtr + 6;
+                }
+
+                inline void wrapForEncode(
+                    char *buffer,
+                    const std::uint32_t count,
+                    std::uint64_t *pos,
+                    const std::uint64_t actingVersion,
+                    const std::uint64_t bufferLength)
+                {
+            #if defined(__GNUG__) && !defined(__clang__)
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wtype-limits"
+            #endif
+                    if (count > 2147483647)
+                    {
+                        throw std::runtime_error("count outside of allowed range [E110]");
+                    }
+            #if defined(__GNUG__) && !defined(__clang__)
+            #pragma GCC diagnostic pop
+            #endif
+                    m_buffer = buffer;
+                    m_bufferLength = bufferLength;
+                    GroupSizeEncoding dimensions(buffer, *pos, bufferLength, actingVersion);
+                    dimensions.blockLength(static_cast<std::uint16_t>(0));
+                    dimensions.numInGroup(static_cast<std::uint32_t>(count));
+                    m_index = 0;
+                    m_count = count;
+                    m_blockLength = 0;
+                    m_actingVersion = actingVersion;
+                    m_initialPosition = *pos;
+                    m_positionPtr = pos;
+                    *m_positionPtr = *m_positionPtr + 6;
+                }
+
+                static SBE_CONSTEXPR std::uint64_t sbeHeaderSize() SBE_NOEXCEPT
+                {
+                    return 6;
+                }
+
+                static SBE_CONSTEXPR std::uint64_t sbeBlockLength() SBE_NOEXCEPT
+                {
+                    return 0;
+                }
+
+                SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+                {
+                    return m_blockLength;
+                }
+
+                SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
+                {
+                    return *m_positionPtr;
+                }
+
+                // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+                std::uint64_t sbeCheckPosition(const std::uint64_t position)
+                {
+                    if (SBE_BOUNDS_CHECK_EXPECT((position > m_bufferLength), false))
+                    {
+                        throw std::runtime_error("buffer too short [E100]");
+                    }
+                    return position;
+                }
+
+                void sbePosition(const std::uint64_t position)
+                {
+                    *m_positionPtr = sbeCheckPosition(position);
+                }
+
+                SBE_NODISCARD inline std::uint64_t count() const SBE_NOEXCEPT
+                {
+                    return m_count;
+                }
+
+                SBE_NODISCARD inline bool hasNext() const SBE_NOEXCEPT
+                {
+                    return m_index < m_count;
+                }
+
+                inline Permissions &next()
+                {
+                    if (m_index >= m_count)
+                    {
+                        throw std::runtime_error("index >= count [E108]");
+                    }
+                    m_offset = *m_positionPtr;
+                    if (SBE_BOUNDS_CHECK_EXPECT(((m_offset + m_blockLength) > m_bufferLength), false))
+                    {
+                        throw std::runtime_error("buffer too short for next group index [E108]");
+                    }
+                    *m_positionPtr = m_offset + m_blockLength;
+                    ++m_index;
+
+                    return *this;
+                }
+
+                inline std::uint64_t resetCountToIndex()
+                {
+                    m_count = m_index;
+                    GroupSizeEncoding dimensions(m_buffer, m_initialPosition, m_bufferLength, m_actingVersion);
+                    dimensions.numInGroup(static_cast<std::uint32_t>(m_count));
+                    return m_count;
+                }
+
+                template<class Func> inline void forEach(Func &&func)
+                {
+                    while (hasNext())
+                    {
+                        next();
+                        func(*this);
+                    }
+                }
+
+
+                SBE_NODISCARD static const char *permissionMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+                {
+                    switch (metaAttribute)
+                    {
+                        case MetaAttribute::PRESENCE: return "required";
+                        default: return "";
+                    }
+                }
+
+                static const char *permissionCharacterEncoding() SBE_NOEXCEPT
+                {
+                    return "UTF-8";
+                }
+
+                static SBE_CONSTEXPR std::uint64_t permissionSinceVersion() SBE_NOEXCEPT
+                {
+                    return 0;
+                }
+
+                bool permissionInActingVersion() SBE_NOEXCEPT
+                {
+                    return true;
+                }
+
+                static SBE_CONSTEXPR std::uint16_t permissionId() SBE_NOEXCEPT
+                {
+                    return 200;
+                }
+
+                static SBE_CONSTEXPR std::uint64_t permissionHeaderLength() SBE_NOEXCEPT
+                {
+                    return 1;
+                }
+
+                SBE_NODISCARD std::uint8_t permissionLength() const
+                {
+                    std::uint8_t length;
+                    std::memcpy(&length, m_buffer + sbePosition(), sizeof(std::uint8_t));
+                    return (length);
+                }
+
+                std::uint64_t skipPermission()
+                {
+                    std::uint64_t lengthOfLengthField = 1;
+                    std::uint64_t lengthPosition = sbePosition();
+                    std::uint8_t lengthFieldValue;
+                    std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
+                    std::uint64_t dataLength = (lengthFieldValue);
+                    sbePosition(lengthPosition + lengthOfLengthField + dataLength);
+                    return dataLength;
+                }
+
+                SBE_NODISCARD const char *permission()
+                {
+                    std::uint8_t lengthFieldValue;
+                    std::memcpy(&lengthFieldValue, m_buffer + sbePosition(), sizeof(std::uint8_t));
+                    const char *fieldPtr = m_buffer + sbePosition() + 1;
+                    sbePosition(sbePosition() + 1 + (lengthFieldValue));
+                    return fieldPtr;
+                }
+
+                std::uint64_t getPermission(char *dst, const std::uint64_t length)
+                {
+                    std::uint64_t lengthOfLengthField = 1;
+                    std::uint64_t lengthPosition = sbePosition();
+                    sbePosition(lengthPosition + lengthOfLengthField);
+                    std::uint8_t lengthFieldValue;
+                    std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
+                    std::uint64_t dataLength = (lengthFieldValue);
+                    std::uint64_t bytesToCopy = length < dataLength ? length : dataLength;
+                    std::uint64_t pos = sbePosition();
+                    sbePosition(pos + dataLength);
+                    std::memcpy(dst, m_buffer + pos, static_cast<std::size_t>(bytesToCopy));
+                    return bytesToCopy;
+                }
+
+                Permissions &putPermission(const char *src, const std::uint8_t length)
+                {
+                    std::uint64_t lengthOfLengthField = 1;
+                    std::uint64_t lengthPosition = sbePosition();
+                    std::uint8_t lengthFieldValue = (length);
+                    sbePosition(lengthPosition + lengthOfLengthField);
+                    std::memcpy(m_buffer + lengthPosition, &lengthFieldValue, sizeof(std::uint8_t));
+                    if (length != std::uint8_t(0))
+                    {
+                        std::uint64_t pos = sbePosition();
+                        sbePosition(pos + length);
+                        std::memcpy(m_buffer + pos, src, length);
+                    }
+                    return *this;
+                }
+
+                std::string getPermissionAsString()
+                {
+                    std::uint64_t lengthOfLengthField = 1;
+                    std::uint64_t lengthPosition = sbePosition();
+                    sbePosition(lengthPosition + lengthOfLengthField);
+                    std::uint8_t lengthFieldValue;
+                    std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
+                    std::uint64_t dataLength = (lengthFieldValue);
+                    std::uint64_t pos = sbePosition();
+                    const std::string result(m_buffer + pos, dataLength);
+                    sbePosition(pos + dataLength);
+                    return result;
+                }
+
+                std::string getPermissionAsJsonEscapedString()
+                {
+                    std::ostringstream oss;
+                    std::string s = getPermissionAsString();
+
+                    for (const auto c : s)
+                    {
+                        switch (c)
+                        {
+                            case '"': oss << "\\\""; break;
+                            case '\\': oss << "\\\\"; break;
+                            case '\b': oss << "\\b"; break;
+                            case '\f': oss << "\\f"; break;
+                            case '\n': oss << "\\n"; break;
+                            case '\r': oss << "\\r"; break;
+                            case '\t': oss << "\\t"; break;
+
+                            default:
+                                if ('\x00' <= c && c <= '\x1f')
+                                {
+                                    oss << "\\u" << std::hex << std::setw(4)
+                                        << std::setfill('0') << (int)(c);
+                                }
+                                else
+                                {
+                                    oss << c;
+                                }
+                        }
+                    }
+
+                    return oss.str();
+                }
+
+                #if __cplusplus >= 201703L
+                std::string_view getPermissionAsStringView()
+                {
+                    std::uint64_t lengthOfLengthField = 1;
+                    std::uint64_t lengthPosition = sbePosition();
+                    sbePosition(lengthPosition + lengthOfLengthField);
+                    std::uint8_t lengthFieldValue;
+                    std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
+                    std::uint64_t dataLength = (lengthFieldValue);
+                    std::uint64_t pos = sbePosition();
+                    const std::string_view result(m_buffer + pos, dataLength);
+                    sbePosition(pos + dataLength);
+                    return result;
+                }
+                #endif
+
+                Permissions &putPermission(const std::string &str)
+                {
+                    if (str.length() > 254)
+                    {
+                        throw std::runtime_error("std::string too long for length type [E109]");
+                    }
+                    return putPermission(str.data(), static_cast<std::uint8_t>(str.length()));
+                }
+
+                #if __cplusplus >= 201703L
+                Permissions &putPermission(const std::string_view str)
+                {
+                    if (str.length() > 254)
+                    {
+                        throw std::runtime_error("std::string too long for length type [E109]");
+                    }
+                    return putPermission(str.data(), static_cast<std::uint8_t>(str.length()));
+                }
+                #endif
+
+                template<typename CharT, typename Traits>
+                friend std::basic_ostream<CharT, Traits> & operator << (
+                    std::basic_ostream<CharT, Traits> &builder, Permissions &writer)
+                {
+                    builder << '{';
+                    builder << R"("permission": )";
+                    builder << '"' <<
+                        writer.getPermissionAsJsonEscapedString().c_str() << '"';
+
+                    builder << '}';
+
+                    return builder;
+                }
+
+                void skip()
+                {
+                    skipPermission();
+                }
+
+                SBE_NODISCARD static SBE_CONSTEXPR bool isConstLength() SBE_NOEXCEPT
+                {
+                    return false;
+                }
+
+                SBE_NODISCARD static std::size_t computeLength(std::size_t permissionLength = 0)
+                {
+#if defined(__GNUG__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
+                    std::size_t length = sbeBlockLength();
+
+                    length += permissionHeaderLength();
+                    if (permissionLength > 254LL)
+                    {
+                        throw std::runtime_error("permissionLength too long for length type [E109]");
+                    }
+                    length += permissionLength;
+
+                    return length;
+#if defined(__GNUG__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+                }
+            };
+
+private:
+            Permissions m_permissions;
+
+public:
+            SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t permissionsId() SBE_NOEXCEPT
             {
-                return "UTF-8";
+                return 100;
             }
 
-            static SBE_CONSTEXPR std::uint64_t permissionSinceVersion() SBE_NOEXCEPT
+            SBE_NODISCARD inline Permissions &permissions()
+            {
+                m_permissions.wrapForDecode(m_buffer, sbePositionPtr(), m_actingVersion, m_bufferLength);
+                return m_permissions;
+            }
+
+            Permissions &permissionsCount(const std::uint32_t count)
+            {
+                m_permissions.wrapForEncode(m_buffer, count, sbePositionPtr(), m_actingVersion, m_bufferLength);
+                return m_permissions;
+            }
+
+            SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t permissionsSinceVersion() SBE_NOEXCEPT
             {
                 return 0;
             }
 
-            bool permissionInActingVersion() SBE_NOEXCEPT
+            SBE_NODISCARD bool permissionsInActingVersion() const SBE_NOEXCEPT
             {
                 return true;
             }
 
-            static SBE_CONSTEXPR std::uint16_t permissionId() SBE_NOEXCEPT
-            {
-                return 200;
-            }
-
-            static SBE_CONSTEXPR std::uint64_t permissionHeaderLength() SBE_NOEXCEPT
-            {
-                return 1;
-            }
-
-            SBE_NODISCARD std::uint8_t permissionLength() const
-            {
-                std::uint8_t length;
-                std::memcpy(&length, m_buffer + sbePosition(), sizeof(std::uint8_t));
-                return (length);
-            }
-
-            std::uint64_t skipPermission()
-            {
-                std::uint64_t lengthOfLengthField = 1;
-                std::uint64_t lengthPosition = sbePosition();
-                std::uint8_t lengthFieldValue;
-                std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
-                std::uint64_t dataLength = (lengthFieldValue);
-                sbePosition(lengthPosition + lengthOfLengthField + dataLength);
-                return dataLength;
-            }
-
-            SBE_NODISCARD const char *permission()
-            {
-                std::uint8_t lengthFieldValue;
-                std::memcpy(&lengthFieldValue, m_buffer + sbePosition(), sizeof(std::uint8_t));
-                const char *fieldPtr = m_buffer + sbePosition() + 1;
-                sbePosition(sbePosition() + 1 + (lengthFieldValue));
-                return fieldPtr;
-            }
-
-            std::uint64_t getPermission(char *dst, const std::uint64_t length)
-            {
-                std::uint64_t lengthOfLengthField = 1;
-                std::uint64_t lengthPosition = sbePosition();
-                sbePosition(lengthPosition + lengthOfLengthField);
-                std::uint8_t lengthFieldValue;
-                std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
-                std::uint64_t dataLength = (lengthFieldValue);
-                std::uint64_t bytesToCopy = length < dataLength ? length : dataLength;
-                std::uint64_t pos = sbePosition();
-                sbePosition(pos + dataLength);
-                std::memcpy(dst, m_buffer + pos, static_cast<std::size_t>(bytesToCopy));
-                return bytesToCopy;
-            }
-
-            Permissions &putPermission(const char *src, const std::uint8_t length)
-            {
-                std::uint64_t lengthOfLengthField = 1;
-                std::uint64_t lengthPosition = sbePosition();
-                std::uint8_t lengthFieldValue = (length);
-                sbePosition(lengthPosition + lengthOfLengthField);
-                std::memcpy(m_buffer + lengthPosition, &lengthFieldValue, sizeof(std::uint8_t));
-                if (length != std::uint8_t(0))
-                {
-                    std::uint64_t pos = sbePosition();
-                    sbePosition(pos + length);
-                    std::memcpy(m_buffer + pos, src, length);
-                }
-                return *this;
-            }
-
-            std::string getPermissionAsString()
-            {
-                std::uint64_t lengthOfLengthField = 1;
-                std::uint64_t lengthPosition = sbePosition();
-                sbePosition(lengthPosition + lengthOfLengthField);
-                std::uint8_t lengthFieldValue;
-                std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
-                std::uint64_t dataLength = (lengthFieldValue);
-                std::uint64_t pos = sbePosition();
-                const std::string result(m_buffer + pos, dataLength);
-                sbePosition(pos + dataLength);
-                return result;
-            }
-
-            std::string getPermissionAsJsonEscapedString()
-            {
-                std::ostringstream oss;
-                std::string s = getPermissionAsString();
-
-                for (const auto c : s)
-                {
-                    switch (c)
-                    {
-                        case '"': oss << "\\\""; break;
-                        case '\\': oss << "\\\\"; break;
-                        case '\b': oss << "\\b"; break;
-                        case '\f': oss << "\\f"; break;
-                        case '\n': oss << "\\n"; break;
-                        case '\r': oss << "\\r"; break;
-                        case '\t': oss << "\\t"; break;
-
-                        default:
-                            if ('\x00' <= c && c <= '\x1f')
-                            {
-                                oss << "\\u" << std::hex << std::setw(4)
-                                    << std::setfill('0') << (int)(c);
-                            }
-                            else
-                            {
-                                oss << c;
-                            }
-                    }
-                }
-
-                return oss.str();
-            }
-
-            #if __cplusplus >= 201703L
-            std::string_view getPermissionAsStringView()
-            {
-                std::uint64_t lengthOfLengthField = 1;
-                std::uint64_t lengthPosition = sbePosition();
-                sbePosition(lengthPosition + lengthOfLengthField);
-                std::uint8_t lengthFieldValue;
-                std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
-                std::uint64_t dataLength = (lengthFieldValue);
-                std::uint64_t pos = sbePosition();
-                const std::string_view result(m_buffer + pos, dataLength);
-                sbePosition(pos + dataLength);
-                return result;
-            }
-            #endif
-
-            Permissions &putPermission(const std::string &str)
-            {
-                if (str.length() > 254)
-                {
-                    throw std::runtime_error("std::string too long for length type [E109]");
-                }
-                return putPermission(str.data(), static_cast<std::uint8_t>(str.length()));
-            }
-
-            #if __cplusplus >= 201703L
-            Permissions &putPermission(const std::string_view str)
-            {
-                if (str.length() > 254)
-                {
-                    throw std::runtime_error("std::string too long for length type [E109]");
-                }
-                return putPermission(str.data(), static_cast<std::uint8_t>(str.length()));
-            }
-            #endif
-
             template<typename CharT, typename Traits>
             friend std::basic_ostream<CharT, Traits> & operator << (
-                std::basic_ostream<CharT, Traits> &builder, Permissions &writer)
+                std::basic_ostream<CharT, Traits> &builder, PermissionSets &writer)
             {
                 builder << '{';
-                builder << R"("permission": )";
-                builder << '"' <<
-                    writer.getPermissionAsJsonEscapedString().c_str() << '"';
+                {
+                    bool atLeastOne = false;
+                    builder << R"("permissions": [)";
+                    writer.permissions().forEach(
+                        [&](Permissions &permissions)
+                        {
+                            if (atLeastOne)
+                            {
+                                builder << ", ";
+                            }
+                            atLeastOne = true;
+                            builder << permissions;
+                        });
+                    builder << ']';
+                }
 
                 builder << '}';
 
@@ -2905,7 +3358,11 @@ public:
 
             void skip()
             {
-                skipPermission();
+                auto &permissionsGroup { permissions() };
+                while (permissionsGroup.hasNext())
+                {
+                    permissionsGroup.next().skip();
+                }
             }
 
             SBE_NODISCARD static SBE_CONSTEXPR bool isConstLength() SBE_NOEXCEPT
@@ -2913,7 +3370,7 @@ public:
                 return false;
             }
 
-            SBE_NODISCARD static std::size_t computeLength(std::size_t permissionLength = 0)
+            SBE_NODISCARD static std::size_t computeLength(const std::vector<std::tuple<std::size_t>> &permissionsItemLengths = {})
             {
 #if defined(__GNUG__) && !defined(__clang__)
 #pragma GCC diagnostic push
@@ -2921,12 +3378,20 @@ public:
 #endif
                 std::size_t length = sbeBlockLength();
 
-                length += permissionHeaderLength();
-                if (permissionLength > 254LL)
+                length += Permissions::sbeHeaderSize();
+                if (permissionsItemLengths.size() > 2147483647LL)
                 {
-                    throw std::runtime_error("permissionLength too long for length type [E109]");
+                    throw std::runtime_error("permissionsItemLengths.size() outside of allowed range [E110]");
                 }
-                length += permissionLength;
+
+                for (const auto &e: permissionsItemLengths)
+                {
+                    #if __cplusplus >= 201703L
+                    length += std::apply(Permissions::computeLength, e);
+                    #else
+                    length += Permissions::computeLength(std::get<0>(e));
+                    #endif
+                }
 
                 return length;
 #if defined(__GNUG__) && !defined(__clang__)
@@ -2936,32 +3401,32 @@ public:
         };
 
 private:
-        Permissions m_permissions;
+        PermissionSets m_permissionSets;
 
 public:
-        SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t permissionsId() SBE_NOEXCEPT
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t permissionSetsId() SBE_NOEXCEPT
         {
             return 101;
         }
 
-        SBE_NODISCARD inline Permissions &permissions()
+        SBE_NODISCARD inline PermissionSets &permissionSets()
         {
-            m_permissions.wrapForDecode(m_buffer, sbePositionPtr(), m_actingVersion, m_bufferLength);
-            return m_permissions;
+            m_permissionSets.wrapForDecode(m_buffer, sbePositionPtr(), m_actingVersion, m_bufferLength);
+            return m_permissionSets;
         }
 
-        Permissions &permissionsCount(const std::uint32_t count)
+        PermissionSets &permissionSetsCount(const std::uint32_t count)
         {
-            m_permissions.wrapForEncode(m_buffer, count, sbePositionPtr(), m_actingVersion, m_bufferLength);
-            return m_permissions;
+            m_permissionSets.wrapForEncode(m_buffer, count, sbePositionPtr(), m_actingVersion, m_bufferLength);
+            return m_permissionSets;
         }
 
-        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t permissionsSinceVersion() SBE_NOEXCEPT
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t permissionSetsSinceVersion() SBE_NOEXCEPT
         {
             return 0;
         }
 
-        SBE_NODISCARD bool permissionsInActingVersion() const SBE_NOEXCEPT
+        SBE_NODISCARD bool permissionSetsInActingVersion() const SBE_NOEXCEPT
         {
             return true;
         }
@@ -3528,6 +3993,10 @@ public:
             builder << '"' << writer.ocoAllowed() << '"';
 
             builder << ", ";
+            builder << R"("otoAllowed": )";
+            builder << '"' << writer.otoAllowed() << '"';
+
+            builder << ", ";
             builder << R"("quoteOrderQtyMarketAllowed": )";
             builder << '"' << writer.quoteOrderQtyMarketAllowed() << '"';
 
@@ -3538,6 +4007,10 @@ public:
             builder << ", ";
             builder << R"("cancelReplaceAllowed": )";
             builder << '"' << writer.cancelReplaceAllowed() << '"';
+
+            builder << ", ";
+            builder << R"("amendAllowed": )";
+            builder << '"' << writer.amendAllowed() << '"';
 
             builder << ", ";
             builder << R"("isSpotTradingAllowed": )";
@@ -3554,6 +4027,10 @@ public:
             builder << ", ";
             builder << R"("allowedSelfTradePreventionModes": )";
             builder << writer.allowedSelfTradePreventionModes();
+
+            builder << ", ";
+            builder << R"("pegInstructionsAllowed": )";
+            builder << '"' << writer.pegInstructionsAllowed() << '"';
 
             builder << ", ";
             {
@@ -3575,16 +4052,16 @@ public:
             builder << ", ";
             {
                 bool atLeastOne = false;
-                builder << R"("permissions": [)";
-                writer.permissions().forEach(
-                    [&](Permissions &permissions)
+                builder << R"("permissionSets": [)";
+                writer.permissionSets().forEach(
+                    [&](PermissionSets &permissionSets)
                     {
                         if (atLeastOne)
                         {
                             builder << ", ";
                         }
                         atLeastOne = true;
-                        builder << permissions;
+                        builder << permissionSets;
                     });
                 builder << ']';
             }
@@ -3616,10 +4093,10 @@ public:
             {
                 filtersGroup.next().skip();
             }
-            auto &permissionsGroup { permissions() };
-            while (permissionsGroup.hasNext())
+            auto &permissionSetsGroup { permissionSets() };
+            while (permissionSetsGroup.hasNext())
             {
-                permissionsGroup.next().skip();
+                permissionSetsGroup.next().skip();
             }
             skipSymbol();
             skipBaseAsset();
@@ -3633,7 +4110,7 @@ public:
 
         SBE_NODISCARD static std::size_t computeLength(
             const std::vector<std::tuple<std::size_t>> &filtersItemLengths = {},
-            const std::vector<std::tuple<std::size_t>> &permissionsItemLengths = {},
+            const std::vector<std::tuple<const std::vector<std::tuple<std::size_t>> &>> &permissionSetsItemLengths = {},
             std::size_t symbolLength = 0,
             std::size_t baseAssetLength = 0,
             std::size_t quoteAssetLength = 0)
@@ -3659,18 +4136,18 @@ public:
                 #endif
             }
 
-            length += Permissions::sbeHeaderSize();
-            if (permissionsItemLengths.size() > 2147483647LL)
+            length += PermissionSets::sbeHeaderSize();
+            if (permissionSetsItemLengths.size() > 2147483647LL)
             {
-                throw std::runtime_error("permissionsItemLengths.size() outside of allowed range [E110]");
+                throw std::runtime_error("permissionSetsItemLengths.size() outside of allowed range [E110]");
             }
 
-            for (const auto &e: permissionsItemLengths)
+            for (const auto &e: permissionSetsItemLengths)
             {
                 #if __cplusplus >= 201703L
-                length += std::apply(Permissions::computeLength, e);
+                length += std::apply(PermissionSets::computeLength, e);
                 #else
-                length += Permissions::computeLength(std::get<0>(e));
+                length += PermissionSets::computeLength(std::get<0>(e));
                 #endif
             }
 
@@ -3812,6 +4289,11 @@ public:
         static SBE_CONSTEXPR std::uint64_t sbeBlockLength() SBE_NOEXCEPT
         {
             return 0;
+        }
+
+        SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+        {
+            return m_blockLength;
         }
 
         SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
@@ -3958,6 +4440,11 @@ public:
             static SBE_CONSTEXPR std::uint64_t sbeBlockLength() SBE_NOEXCEPT
             {
                 return 0;
+            }
+
+            SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+            {
+                return m_blockLength;
             }
 
             SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
@@ -4691,7 +5178,7 @@ SBE_NODISCARD static std::size_t computeLength(
     const std::vector<std::tuple<std::size_t>> &exchangeFiltersItemLengths = {},
     const std::vector<std::tuple<
         const std::vector<std::tuple<std::size_t>> &,
-        const std::vector<std::tuple<std::size_t>> &,
+        const std::vector<std::tuple<const std::vector<std::tuple<std::size_t>> &>> &,
         std::size_t,
         std::size_t,
         std::size_t>> &symbolsItemLengths = {},

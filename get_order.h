@@ -17,6 +17,8 @@
 #include "spot_sbe/OrderSide.h"
 #include "spot_sbe/OrderStatus.h"
 #include "spot_sbe/OrderType.h"
+#include "spot_sbe/PegOffsetType.h"
+#include "spot_sbe/PegPriceType.h"
 #include "spot_sbe/SelfTradePreventionMode.h"
 #include "spot_sbe/TimeInForce.h"
 #include "util.h"
@@ -27,6 +29,8 @@ using spot_sbe::OrderCapacity;
 using spot_sbe::OrderSide;
 using spot_sbe::OrderStatus;
 using spot_sbe::OrderType;
+using spot_sbe::PegOffsetType;
+using spot_sbe::PegPriceType;
 using spot_sbe::SelfTradePreventionMode;
 using spot_sbe::TimeInForce;
 
@@ -58,6 +62,10 @@ struct GetOrder {
     std::optional<int64_t> prevented_match_id;
     std::optional<Decimal> prevented_quantity;
     std::optional<bool> used_sor;
+    std::optional<PegPriceType::Value> peg_price_type;
+    std::optional<PegOffsetType::Value> peg_offset_type;
+    std::optional<uint8_t> peg_offset_value;
+    std::optional<Decimal> pegged_price;
     std::string symbol;
     std::string client_order_id;
 };

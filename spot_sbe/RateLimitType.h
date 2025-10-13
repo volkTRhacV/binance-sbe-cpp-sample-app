@@ -34,6 +34,7 @@ public:
         Connections = static_cast<std::uint8_t>(1),
         RequestWeight = static_cast<std::uint8_t>(2),
         Orders = static_cast<std::uint8_t>(3),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -45,6 +46,7 @@ public:
             case static_cast<std::uint8_t>(1): return Connections;
             case static_cast<std::uint8_t>(2): return RequestWeight;
             case static_cast<std::uint8_t>(3): return Orders;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -59,6 +61,7 @@ public:
             case Connections: return "Connections";
             case RequestWeight: return "RequestWeight";
             case Orders: return "Orders";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

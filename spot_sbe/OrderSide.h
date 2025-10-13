@@ -32,6 +32,7 @@ public:
     {
         Buy = static_cast<std::uint8_t>(0),
         Sell = static_cast<std::uint8_t>(1),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -41,6 +42,7 @@ public:
         {
             case static_cast<std::uint8_t>(0): return Buy;
             case static_cast<std::uint8_t>(1): return Sell;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -53,6 +55,7 @@ public:
         {
             case Buy: return "Buy";
             case Sell: return "Sell";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

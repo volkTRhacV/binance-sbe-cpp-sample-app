@@ -55,6 +55,11 @@ struct NewOrder {
     std::optional<int64_t> trade_group_id;
     std::optional<Decimal> prevented_quantity;
     std::optional<bool> used_sor;
+    Decimal orig_quote_order_qty;
+    std::optional<PegPriceType::Value> peg_price_type;
+    std::optional<PegOffsetType::Value> peg_offset_type;
+    std::optional<uint8_t> peg_offset_value;
+    std::optional<Decimal> pegged_price;
     std::string symbol;
     std::string client_order_id;
 };

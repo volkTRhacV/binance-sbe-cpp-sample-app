@@ -30,13 +30,11 @@ class SymbolStatus
 public:
     enum Value
     {
-        PreTrading = static_cast<std::uint8_t>(0),
-        Trading = static_cast<std::uint8_t>(1),
-        PostTrading = static_cast<std::uint8_t>(2),
-        EndOfDay = static_cast<std::uint8_t>(3),
-        Halt = static_cast<std::uint8_t>(4),
-        AuctionMatch = static_cast<std::uint8_t>(5),
-        Break = static_cast<std::uint8_t>(7),
+        Trading = static_cast<std::uint8_t>(0),
+        EndOfDay = static_cast<std::uint8_t>(1),
+        Halt = static_cast<std::uint8_t>(2),
+        Break = static_cast<std::uint8_t>(3),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -44,13 +42,11 @@ public:
     {
         switch (value)
         {
-            case static_cast<std::uint8_t>(0): return PreTrading;
-            case static_cast<std::uint8_t>(1): return Trading;
-            case static_cast<std::uint8_t>(2): return PostTrading;
-            case static_cast<std::uint8_t>(3): return EndOfDay;
-            case static_cast<std::uint8_t>(4): return Halt;
-            case static_cast<std::uint8_t>(5): return AuctionMatch;
-            case static_cast<std::uint8_t>(7): return Break;
+            case static_cast<std::uint8_t>(0): return Trading;
+            case static_cast<std::uint8_t>(1): return EndOfDay;
+            case static_cast<std::uint8_t>(2): return Halt;
+            case static_cast<std::uint8_t>(3): return Break;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -61,13 +57,11 @@ public:
     {
         switch (value)
         {
-            case PreTrading: return "PreTrading";
             case Trading: return "Trading";
-            case PostTrading: return "PostTrading";
             case EndOfDay: return "EndOfDay";
             case Halt: return "Halt";
-            case AuctionMatch: return "AuctionMatch";
             case Break: return "Break";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

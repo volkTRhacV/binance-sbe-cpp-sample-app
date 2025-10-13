@@ -13,8 +13,18 @@
 #if __cplusplus >= 201703L
 #  include <string_view>
 #  define SBE_NODISCARD [[nodiscard]]
+#  if !defined(SBE_USE_STRING_VIEW)
+#    define SBE_USE_STRING_VIEW 1
+#  endif
 #else
 #  define SBE_NODISCARD
+#endif
+
+#if __cplusplus >= 202002L
+#  include <span>
+#  if !defined(SBE_USE_SPAN)
+#    define SBE_USE_SPAN 1
+#  endif
 #endif
 
 #if !defined(__STDC_LIMIT_MACROS)
@@ -83,9 +93,11 @@
 #include "OrderType.h"
 #include "VarString.h"
 #include "MatchType.h"
+#include "ExecutionType.h"
 #include "BoolEnum.h"
 #include "OrderStatus.h"
 #include "GroupSizeEncoding.h"
+#include "PegPriceType.h"
 #include "GroupSize16Encoding.h"
 #include "OptionalMessageData.h"
 #include "ContingencyType.h"
@@ -111,6 +123,7 @@
 #include "RateLimitType.h"
 #include "MessageData16.h"
 #include "FilterType.h"
+#include "PegOffsetType.h"
 #include "VarString8.h"
 #include "MessageData.h"
 
@@ -132,10 +145,10 @@ private:
     }
 
 public:
-    static const std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(44);
-    static const std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(315);
-    static const std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(1);
-    static const std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(0);
+    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(60);
+    static constexpr std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(315);
+    static constexpr std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(3);
+    static constexpr std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(1);
     static constexpr const char* SBE_SEMANTIC_VERSION = "5.2";
 
     enum MetaAttribute
@@ -190,7 +203,7 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeBlockLength() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(44);
+        return static_cast<std::uint16_t>(60);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t sbeBlockAndHeaderLength() SBE_NOEXCEPT
@@ -205,12 +218,12 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaId() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(1);
+        return static_cast<std::uint16_t>(3);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaVersion() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(0);
+        return static_cast<std::uint16_t>(1);
     }
 
     SBE_NODISCARD static const char *sbeSemanticVersion() SBE_NOEXCEPT
@@ -306,7 +319,7 @@ public:
 
     SBE_NODISCARD std::uint64_t decodeLength() const
     {
-        OrderTestWithCommissionsResponse skipper(m_buffer, m_offset, m_bufferLength, sbeBlockLength(), m_actingVersion);
+        OrderTestWithCommissionsResponse skipper(m_buffer, m_offset, m_bufferLength, m_actingBlockLength, m_actingVersion);
         skipper.skip();
         return skipper.encodedLength();
     }
@@ -882,6 +895,142 @@ public:
         return *this;
     }
 
+    SBE_NODISCARD static const char *specialCommissionForOrderMakerMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+    {
+        switch (metaAttribute)
+        {
+            case MetaAttribute::PRESENCE: return "optional";
+            default: return "";
+        }
+    }
+
+    static SBE_CONSTEXPR std::uint16_t specialCommissionForOrderMakerId() SBE_NOEXCEPT
+    {
+        return 10;
+    }
+
+    SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t specialCommissionForOrderMakerSinceVersion() SBE_NOEXCEPT
+    {
+        return 1;
+    }
+
+    SBE_NODISCARD bool specialCommissionForOrderMakerInActingVersion() SBE_NOEXCEPT
+    {
+        return m_actingVersion >= specialCommissionForOrderMakerSinceVersion();
+    }
+
+    SBE_NODISCARD static SBE_CONSTEXPR std::size_t specialCommissionForOrderMakerEncodingOffset() SBE_NOEXCEPT
+    {
+        return 44;
+    }
+
+    static SBE_CONSTEXPR std::int64_t specialCommissionForOrderMakerNullValue() SBE_NOEXCEPT
+    {
+        return SBE_NULLVALUE_INT64;
+    }
+
+    static SBE_CONSTEXPR std::int64_t specialCommissionForOrderMakerMinValue() SBE_NOEXCEPT
+    {
+        return INT64_C(-9223372036854775807);
+    }
+
+    static SBE_CONSTEXPR std::int64_t specialCommissionForOrderMakerMaxValue() SBE_NOEXCEPT
+    {
+        return INT64_C(9223372036854775807);
+    }
+
+    static SBE_CONSTEXPR std::size_t specialCommissionForOrderMakerEncodingLength() SBE_NOEXCEPT
+    {
+        return 8;
+    }
+
+    SBE_NODISCARD std::int64_t specialCommissionForOrderMaker() const SBE_NOEXCEPT
+    {
+        if (m_actingVersion < 1)
+        {
+            return INT64_MIN;
+        }
+
+        std::int64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 44, sizeof(std::int64_t));
+        return SBE_LITTLE_ENDIAN_ENCODE_64(val);
+    }
+
+    OrderTestWithCommissionsResponse &specialCommissionForOrderMaker(const std::int64_t value) SBE_NOEXCEPT
+    {
+        std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 44, &val, sizeof(std::int64_t));
+        return *this;
+    }
+
+    SBE_NODISCARD static const char *specialCommissionForOrderTakerMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+    {
+        switch (metaAttribute)
+        {
+            case MetaAttribute::PRESENCE: return "optional";
+            default: return "";
+        }
+    }
+
+    static SBE_CONSTEXPR std::uint16_t specialCommissionForOrderTakerId() SBE_NOEXCEPT
+    {
+        return 11;
+    }
+
+    SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t specialCommissionForOrderTakerSinceVersion() SBE_NOEXCEPT
+    {
+        return 1;
+    }
+
+    SBE_NODISCARD bool specialCommissionForOrderTakerInActingVersion() SBE_NOEXCEPT
+    {
+        return m_actingVersion >= specialCommissionForOrderTakerSinceVersion();
+    }
+
+    SBE_NODISCARD static SBE_CONSTEXPR std::size_t specialCommissionForOrderTakerEncodingOffset() SBE_NOEXCEPT
+    {
+        return 52;
+    }
+
+    static SBE_CONSTEXPR std::int64_t specialCommissionForOrderTakerNullValue() SBE_NOEXCEPT
+    {
+        return SBE_NULLVALUE_INT64;
+    }
+
+    static SBE_CONSTEXPR std::int64_t specialCommissionForOrderTakerMinValue() SBE_NOEXCEPT
+    {
+        return INT64_C(-9223372036854775807);
+    }
+
+    static SBE_CONSTEXPR std::int64_t specialCommissionForOrderTakerMaxValue() SBE_NOEXCEPT
+    {
+        return INT64_C(9223372036854775807);
+    }
+
+    static SBE_CONSTEXPR std::size_t specialCommissionForOrderTakerEncodingLength() SBE_NOEXCEPT
+    {
+        return 8;
+    }
+
+    SBE_NODISCARD std::int64_t specialCommissionForOrderTaker() const SBE_NOEXCEPT
+    {
+        if (m_actingVersion < 1)
+        {
+            return INT64_MIN;
+        }
+
+        std::int64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 52, sizeof(std::int64_t));
+        return SBE_LITTLE_ENDIAN_ENCODE_64(val);
+    }
+
+    OrderTestWithCommissionsResponse &specialCommissionForOrderTaker(const std::int64_t value) SBE_NOEXCEPT
+    {
+        std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 52, &val, sizeof(std::int64_t));
+        return *this;
+    }
+
     SBE_NODISCARD static const char *discountAssetMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
     {
         switch (metaAttribute)
@@ -1108,6 +1257,14 @@ friend std::basic_ostream<CharT, Traits> & operator << (
     builder << ", ";
     builder << R"("discount": )";
     builder << +writer.discount();
+
+    builder << ", ";
+    builder << R"("specialCommissionForOrderMaker": )";
+    builder << +writer.specialCommissionForOrderMaker();
+
+    builder << ", ";
+    builder << R"("specialCommissionForOrderTaker": )";
+    builder << +writer.specialCommissionForOrderTaker();
 
     builder << ", ";
     builder << R"("discountAsset": )";
