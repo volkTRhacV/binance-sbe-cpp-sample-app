@@ -33,6 +33,7 @@ public:
         Success = static_cast<std::uint8_t>(0),
         Failure = static_cast<std::uint8_t>(1),
         NotAttempted = static_cast<std::uint8_t>(2),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -43,6 +44,7 @@ public:
             case static_cast<std::uint8_t>(0): return Success;
             case static_cast<std::uint8_t>(1): return Failure;
             case static_cast<std::uint8_t>(2): return NotAttempted;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -56,6 +58,7 @@ public:
             case Success: return "Success";
             case Failure: return "Failure";
             case NotAttempted: return "NotAttempted";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

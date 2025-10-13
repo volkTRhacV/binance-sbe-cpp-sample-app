@@ -34,6 +34,7 @@ public:
         Minute = static_cast<std::uint8_t>(1),
         Hour = static_cast<std::uint8_t>(2),
         Day = static_cast<std::uint8_t>(3),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -45,6 +46,7 @@ public:
             case static_cast<std::uint8_t>(1): return Minute;
             case static_cast<std::uint8_t>(2): return Hour;
             case static_cast<std::uint8_t>(3): return Day;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -59,6 +61,7 @@ public:
             case Minute: return "Minute";
             case Hour: return "Hour";
             case Day: return "Day";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

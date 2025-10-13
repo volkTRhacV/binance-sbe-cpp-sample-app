@@ -12,6 +12,8 @@ struct SelfTradePreventionModes {
         ExpireTaker = 2,
         ExpireMaker = 4,
         ExpireBoth = 8,
+        Decrement = 16,
+        NonRepresentable = 32
     };
 
     explicit SelfTradePreventionModes(const spot_sbe::AllowedSelfTradePreventionModes& modes)
@@ -27,6 +29,12 @@ struct SelfTradePreventionModes {
         }
         if (modes.expireBoth()) {
             value |= Flags::ExpireBoth;
+        }
+        if (modes.decrement()) {
+            value |= Flags::Decrement;
+        }
+        if (modes.nonRepresentable()) {
+            value |= Flags::NonRepresentable;
         }
     }
 

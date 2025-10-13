@@ -31,6 +31,8 @@ public:
     enum Value
     {
         Oco = static_cast<std::uint8_t>(1),
+        Oto = static_cast<std::uint8_t>(2),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -39,6 +41,8 @@ public:
         switch (value)
         {
             case static_cast<std::uint8_t>(1): return Oco;
+            case static_cast<std::uint8_t>(2): return Oto;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -50,6 +54,8 @@ public:
         switch (value)
         {
             case Oco: return "Oco";
+            case Oto: return "Oto";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

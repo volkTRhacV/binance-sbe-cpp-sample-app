@@ -13,8 +13,18 @@
 #if __cplusplus >= 201703L
 #  include <string_view>
 #  define SBE_NODISCARD [[nodiscard]]
+#  if !defined(SBE_USE_STRING_VIEW)
+#    define SBE_USE_STRING_VIEW 1
+#  endif
 #else
 #  define SBE_NODISCARD
+#endif
+
+#if __cplusplus >= 202002L
+#  include <span>
+#  if !defined(SBE_USE_SPAN)
+#    define SBE_USE_SPAN 1
+#  endif
 #endif
 
 #if !defined(__STDC_LIMIT_MACROS)
@@ -83,9 +93,11 @@
 #include "OrderType.h"
 #include "VarString.h"
 #include "MatchType.h"
+#include "ExecutionType.h"
 #include "BoolEnum.h"
 #include "OrderStatus.h"
 #include "GroupSizeEncoding.h"
+#include "PegPriceType.h"
 #include "GroupSize16Encoding.h"
 #include "OptionalMessageData.h"
 #include "ContingencyType.h"
@@ -111,6 +123,7 @@
 #include "RateLimitType.h"
 #include "MessageData16.h"
 #include "FilterType.h"
+#include "PegOffsetType.h"
 #include "VarString8.h"
 #include "MessageData.h"
 
@@ -132,10 +145,10 @@ private:
     }
 
 public:
-    static const std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(25);
-    static const std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(53);
-    static const std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(1);
-    static const std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(0);
+    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(26);
+    static constexpr std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(53);
+    static constexpr std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(3);
+    static constexpr std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(1);
     static constexpr const char* SBE_SEMANTIC_VERSION = "5.2";
 
     enum MetaAttribute
@@ -190,7 +203,7 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeBlockLength() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(25);
+        return static_cast<std::uint16_t>(26);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t sbeBlockAndHeaderLength() SBE_NOEXCEPT
@@ -205,12 +218,12 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaId() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(1);
+        return static_cast<std::uint16_t>(3);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaVersion() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(0);
+        return static_cast<std::uint16_t>(1);
     }
 
     SBE_NODISCARD static const char *sbeSemanticVersion() SBE_NOEXCEPT
@@ -306,7 +319,7 @@ public:
 
     SBE_NODISCARD std::uint64_t decodeLength() const
     {
-        WebSocketSessionLogoutResponse skipper(m_buffer, m_offset, m_bufferLength, sbeBlockLength(), m_actingVersion);
+        WebSocketSessionLogoutResponse skipper(m_buffer, m_offset, m_bufferLength, m_actingBlockLength, m_actingVersion);
         skipper.skip();
         return skipper.encodedLength();
     }
@@ -575,7 +588,62 @@ public:
         return *this;
     }
 
-    SBE_NODISCARD static const char *apiKeyMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+    SBE_NODISCARD static const char *userDataStreamMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+    {
+        switch (metaAttribute)
+        {
+            case MetaAttribute::PRESENCE: return "optional";
+            default: return "";
+        }
+    }
+
+    static SBE_CONSTEXPR std::uint16_t userDataStreamId() SBE_NOEXCEPT
+    {
+        return 5;
+    }
+
+    SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t userDataStreamSinceVersion() SBE_NOEXCEPT
+    {
+        return 0;
+    }
+
+    SBE_NODISCARD bool userDataStreamInActingVersion() SBE_NOEXCEPT
+    {
+        return true;
+    }
+
+    SBE_NODISCARD static SBE_CONSTEXPR std::size_t userDataStreamEncodingOffset() SBE_NOEXCEPT
+    {
+        return 25;
+    }
+
+    SBE_NODISCARD static SBE_CONSTEXPR std::size_t userDataStreamEncodingLength() SBE_NOEXCEPT
+    {
+        return 1;
+    }
+
+    SBE_NODISCARD std::uint8_t userDataStreamRaw() const SBE_NOEXCEPT
+    {
+        std::uint8_t val;
+        std::memcpy(&val, m_buffer + m_offset + 25, sizeof(std::uint8_t));
+        return (val);
+    }
+
+    SBE_NODISCARD BoolEnum::Value userDataStream() const
+    {
+        std::uint8_t val;
+        std::memcpy(&val, m_buffer + m_offset + 25, sizeof(std::uint8_t));
+        return BoolEnum::get((val));
+    }
+
+    WebSocketSessionLogoutResponse &userDataStream(const BoolEnum::Value value) SBE_NOEXCEPT
+    {
+        std::uint8_t val = (value);
+        std::memcpy(m_buffer + m_offset + 25, &val, sizeof(std::uint8_t));
+        return *this;
+    }
+
+    SBE_NODISCARD static const char *loggedOnApiKeyMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
     {
         switch (metaAttribute)
         {
@@ -584,39 +652,39 @@ public:
         }
     }
 
-    static const char *apiKeyCharacterEncoding() SBE_NOEXCEPT
+    static const char *loggedOnApiKeyCharacterEncoding() SBE_NOEXCEPT
     {
         return "UTF-8";
     }
 
-    static SBE_CONSTEXPR std::uint64_t apiKeySinceVersion() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t loggedOnApiKeySinceVersion() SBE_NOEXCEPT
     {
         return 0;
     }
 
-    bool apiKeyInActingVersion() SBE_NOEXCEPT
+    bool loggedOnApiKeyInActingVersion() SBE_NOEXCEPT
     {
         return true;
     }
 
-    static SBE_CONSTEXPR std::uint16_t apiKeyId() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint16_t loggedOnApiKeyId() SBE_NOEXCEPT
     {
         return 200;
     }
 
-    static SBE_CONSTEXPR std::uint64_t apiKeyHeaderLength() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t loggedOnApiKeyHeaderLength() SBE_NOEXCEPT
     {
         return 2;
     }
 
-    SBE_NODISCARD std::uint16_t apiKeyLength() const
+    SBE_NODISCARD std::uint16_t loggedOnApiKeyLength() const
     {
         std::uint16_t length;
         std::memcpy(&length, m_buffer + sbePosition(), sizeof(std::uint16_t));
         return SBE_LITTLE_ENDIAN_ENCODE_16(length);
     }
 
-    std::uint64_t skipApiKey()
+    std::uint64_t skipLoggedOnApiKey()
     {
         std::uint64_t lengthOfLengthField = 2;
         std::uint64_t lengthPosition = sbePosition();
@@ -627,7 +695,7 @@ public:
         return dataLength;
     }
 
-    SBE_NODISCARD const char *apiKey()
+    SBE_NODISCARD const char *loggedOnApiKey()
     {
         std::uint16_t lengthFieldValue;
         std::memcpy(&lengthFieldValue, m_buffer + sbePosition(), sizeof(std::uint16_t));
@@ -636,7 +704,7 @@ public:
         return fieldPtr;
     }
 
-    std::uint64_t getApiKey(char *dst, const std::uint64_t length)
+    std::uint64_t getLoggedOnApiKey(char *dst, const std::uint64_t length)
     {
         std::uint64_t lengthOfLengthField = 2;
         std::uint64_t lengthPosition = sbePosition();
@@ -651,7 +719,7 @@ public:
         return bytesToCopy;
     }
 
-    WebSocketSessionLogoutResponse &putApiKey(const char *src, const std::uint16_t length)
+    WebSocketSessionLogoutResponse &putLoggedOnApiKey(const char *src, const std::uint16_t length)
     {
         std::uint64_t lengthOfLengthField = 2;
         std::uint64_t lengthPosition = sbePosition();
@@ -667,7 +735,7 @@ public:
         return *this;
     }
 
-    std::string getApiKeyAsString()
+    std::string getLoggedOnApiKeyAsString()
     {
         std::uint64_t lengthOfLengthField = 2;
         std::uint64_t lengthPosition = sbePosition();
@@ -681,10 +749,10 @@ public:
         return result;
     }
 
-    std::string getApiKeyAsJsonEscapedString()
+    std::string getLoggedOnApiKeyAsJsonEscapedString()
     {
         std::ostringstream oss;
-        std::string s = getApiKeyAsString();
+        std::string s = getLoggedOnApiKeyAsString();
 
         for (const auto c : s)
         {
@@ -715,7 +783,7 @@ public:
     }
 
     #if __cplusplus >= 201703L
-    std::string_view getApiKeyAsStringView()
+    std::string_view getLoggedOnApiKeyAsStringView()
     {
         std::uint64_t lengthOfLengthField = 2;
         std::uint64_t lengthPosition = sbePosition();
@@ -730,23 +798,23 @@ public:
     }
     #endif
 
-    WebSocketSessionLogoutResponse &putApiKey(const std::string &str)
+    WebSocketSessionLogoutResponse &putLoggedOnApiKey(const std::string &str)
     {
         if (str.length() > 65534)
         {
             throw std::runtime_error("std::string too long for length type [E109]");
         }
-        return putApiKey(str.data(), static_cast<std::uint16_t>(str.length()));
+        return putLoggedOnApiKey(str.data(), static_cast<std::uint16_t>(str.length()));
     }
 
     #if __cplusplus >= 201703L
-    WebSocketSessionLogoutResponse &putApiKey(const std::string_view str)
+    WebSocketSessionLogoutResponse &putLoggedOnApiKey(const std::string_view str)
     {
         if (str.length() > 65534)
         {
             throw std::runtime_error("std::string too long for length type [E109]");
         }
-        return putApiKey(str.data(), static_cast<std::uint16_t>(str.length()));
+        return putLoggedOnApiKey(str.data(), static_cast<std::uint16_t>(str.length()));
     }
     #endif
 
@@ -783,9 +851,13 @@ friend std::basic_ostream<CharT, Traits> & operator << (
     builder << +writer.serverTime();
 
     builder << ", ";
-    builder << R"("apiKey": )";
+    builder << R"("userDataStream": )";
+    builder << '"' << writer.userDataStream() << '"';
+
+    builder << ", ";
+    builder << R"("loggedOnApiKey": )";
     builder << '"' <<
-        writer.getApiKeyAsJsonEscapedString().c_str() << '"';
+        writer.getLoggedOnApiKeyAsJsonEscapedString().c_str() << '"';
 
     builder << '}';
 
@@ -794,7 +866,7 @@ friend std::basic_ostream<CharT, Traits> & operator << (
 
 void skip()
 {
-    skipApiKey();
+    skipLoggedOnApiKey();
 }
 
 SBE_NODISCARD static SBE_CONSTEXPR bool isConstLength() SBE_NOEXCEPT
@@ -802,7 +874,7 @@ SBE_NODISCARD static SBE_CONSTEXPR bool isConstLength() SBE_NOEXCEPT
     return false;
 }
 
-SBE_NODISCARD static std::size_t computeLength(std::size_t apiKeyLength = 0)
+SBE_NODISCARD static std::size_t computeLength(std::size_t loggedOnApiKeyLength = 0)
 {
 #if defined(__GNUG__) && !defined(__clang__)
 #pragma GCC diagnostic push
@@ -810,12 +882,12 @@ SBE_NODISCARD static std::size_t computeLength(std::size_t apiKeyLength = 0)
 #endif
     std::size_t length = sbeBlockLength();
 
-    length += apiKeyHeaderLength();
-    if (apiKeyLength > 65534LL)
+    length += loggedOnApiKeyHeaderLength();
+    if (loggedOnApiKeyLength > 65534LL)
     {
-        throw std::runtime_error("apiKeyLength too long for length type [E109]");
+        throw std::runtime_error("loggedOnApiKeyLength too long for length type [E109]");
     }
-    length += apiKeyLength;
+    length += loggedOnApiKeyLength;
 
     return length;
 #if defined(__GNUG__) && !defined(__clang__)

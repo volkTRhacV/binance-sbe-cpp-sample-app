@@ -13,8 +13,18 @@
 #if __cplusplus >= 201703L
 #  include <string_view>
 #  define SBE_NODISCARD [[nodiscard]]
+#  if !defined(SBE_USE_STRING_VIEW)
+#    define SBE_USE_STRING_VIEW 1
+#  endif
 #else
 #  define SBE_NODISCARD
+#endif
+
+#if __cplusplus >= 202002L
+#  include <span>
+#  if !defined(SBE_USE_SPAN)
+#    define SBE_USE_SPAN 1
+#  endif
 #endif
 
 #if !defined(__STDC_LIMIT_MACROS)
@@ -83,9 +93,11 @@
 #include "OrderType.h"
 #include "VarString.h"
 #include "MatchType.h"
+#include "ExecutionType.h"
 #include "BoolEnum.h"
 #include "OrderStatus.h"
 #include "GroupSizeEncoding.h"
+#include "PegPriceType.h"
 #include "GroupSize16Encoding.h"
 #include "OptionalMessageData.h"
 #include "ContingencyType.h"
@@ -111,6 +123,7 @@
 #include "RateLimitType.h"
 #include "MessageData16.h"
 #include "FilterType.h"
+#include "PegOffsetType.h"
 #include "VarString8.h"
 #include "MessageData.h"
 
@@ -132,10 +145,10 @@ private:
     }
 
 public:
-    static const std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(0);
-    static const std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(216);
-    static const std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(1);
-    static const std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(0);
+    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(0);
+    static constexpr std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(216);
+    static constexpr std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(3);
+    static constexpr std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(1);
     static constexpr const char* SBE_SEMANTIC_VERSION = "5.2";
 
     enum MetaAttribute
@@ -205,12 +218,12 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaId() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(1);
+        return static_cast<std::uint16_t>(3);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaVersion() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(0);
+        return static_cast<std::uint16_t>(1);
     }
 
     SBE_NODISCARD static const char *sbeSemanticVersion() SBE_NOEXCEPT
@@ -306,7 +319,7 @@ public:
 
     SBE_NODISCARD std::uint64_t decodeLength() const
     {
-        TickerMiniResponse skipper(m_buffer, m_offset, m_bufferLength, sbeBlockLength(), m_actingVersion);
+        TickerMiniResponse skipper(m_buffer, m_offset, m_bufferLength, m_actingBlockLength, m_actingVersion);
         skipper.skip();
         return skipper.encodedLength();
     }
@@ -410,6 +423,11 @@ public:
         static SBE_CONSTEXPR std::uint64_t sbeBlockLength() SBE_NOEXCEPT
         {
             return 106;
+        }
+
+        SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+        {
+            return m_blockLength;
         }
 
         SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
@@ -954,7 +972,57 @@ public:
             return length;
         }
 
+        #ifdef SBE_USE_SPAN
+        SBE_NODISCARD std::span<const std::uint8_t> getVolumeAsSpan() const SBE_NOEXCEPT
+        {
+            const char *buffer = m_buffer + m_offset + 34;
+            return std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(buffer), 16);
+        }
+        #endif
+
+        #ifdef SBE_USE_SPAN
+        template <std::size_t N>
+        Tickers &putVolume(std::span<const std::uint8_t, N> src) SBE_NOEXCEPT
+        {
+            static_assert(N <= 16, "array too large for putVolume");
+
+            std::memcpy(m_buffer + m_offset + 34, src.data(), sizeof(std::uint8_t) * N);
+            for (std::size_t start = N; start < 16; ++start)
+            {
+                m_buffer[m_offset + 34 + start] = 0;
+            }
+
+            return *this;
+        }
+        #endif
+
+        #ifdef SBE_USE_SPAN
+        Tickers &putVolume(std::span<const std::uint8_t> src)
+        {
+            const std::size_t srcLength = src.size();
+            if (srcLength > 16)
+            {
+                throw std::runtime_error("array too large for putVolume [E106]");
+            }
+
+            std::memcpy(m_buffer + m_offset + 34, src.data(), sizeof(std::uint8_t) * srcLength);
+            for (std::size_t start = srcLength; start < 16; ++start)
+            {
+                m_buffer[m_offset + 34 + start] = 0;
+            }
+
+            return *this;
+        }
+        #endif
+
+        #ifdef SBE_USE_SPAN
+        template <typename T>
+        Tickers &putVolume(T&& src)  SBE_NOEXCEPT requires
+            (std::is_pointer_v<std::remove_reference_t<T>> &&
+             !std::is_array_v<std::remove_reference_t<T>>)
+        #else
         Tickers &putVolume(const char *const src) SBE_NOEXCEPT
+        #endif
         {
             std::memcpy(m_buffer + m_offset + 34, src, sizeof(std::uint8_t) * 16);
             return *this;
@@ -1059,7 +1127,57 @@ public:
             return length;
         }
 
+        #ifdef SBE_USE_SPAN
+        SBE_NODISCARD std::span<const std::uint8_t> getQuoteVolumeAsSpan() const SBE_NOEXCEPT
+        {
+            const char *buffer = m_buffer + m_offset + 50;
+            return std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(buffer), 16);
+        }
+        #endif
+
+        #ifdef SBE_USE_SPAN
+        template <std::size_t N>
+        Tickers &putQuoteVolume(std::span<const std::uint8_t, N> src) SBE_NOEXCEPT
+        {
+            static_assert(N <= 16, "array too large for putQuoteVolume");
+
+            std::memcpy(m_buffer + m_offset + 50, src.data(), sizeof(std::uint8_t) * N);
+            for (std::size_t start = N; start < 16; ++start)
+            {
+                m_buffer[m_offset + 50 + start] = 0;
+            }
+
+            return *this;
+        }
+        #endif
+
+        #ifdef SBE_USE_SPAN
+        Tickers &putQuoteVolume(std::span<const std::uint8_t> src)
+        {
+            const std::size_t srcLength = src.size();
+            if (srcLength > 16)
+            {
+                throw std::runtime_error("array too large for putQuoteVolume [E106]");
+            }
+
+            std::memcpy(m_buffer + m_offset + 50, src.data(), sizeof(std::uint8_t) * srcLength);
+            for (std::size_t start = srcLength; start < 16; ++start)
+            {
+                m_buffer[m_offset + 50 + start] = 0;
+            }
+
+            return *this;
+        }
+        #endif
+
+        #ifdef SBE_USE_SPAN
+        template <typename T>
+        Tickers &putQuoteVolume(T&& src)  SBE_NOEXCEPT requires
+            (std::is_pointer_v<std::remove_reference_t<T>> &&
+             !std::is_array_v<std::remove_reference_t<T>>)
+        #else
         Tickers &putQuoteVolume(const char *const src) SBE_NOEXCEPT
+        #endif
         {
             std::memcpy(m_buffer + m_offset + 50, src, sizeof(std::uint8_t) * 16);
             return *this;

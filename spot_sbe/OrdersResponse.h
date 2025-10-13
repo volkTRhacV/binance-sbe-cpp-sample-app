@@ -13,8 +13,18 @@
 #if __cplusplus >= 201703L
 #  include <string_view>
 #  define SBE_NODISCARD [[nodiscard]]
+#  if !defined(SBE_USE_STRING_VIEW)
+#    define SBE_USE_STRING_VIEW 1
+#  endif
 #else
 #  define SBE_NODISCARD
+#endif
+
+#if __cplusplus >= 202002L
+#  include <span>
+#  if !defined(SBE_USE_SPAN)
+#    define SBE_USE_SPAN 1
+#  endif
 #endif
 
 #if !defined(__STDC_LIMIT_MACROS)
@@ -83,9 +93,11 @@
 #include "OrderType.h"
 #include "VarString.h"
 #include "MatchType.h"
+#include "ExecutionType.h"
 #include "BoolEnum.h"
 #include "OrderStatus.h"
 #include "GroupSizeEncoding.h"
+#include "PegPriceType.h"
 #include "GroupSize16Encoding.h"
 #include "OptionalMessageData.h"
 #include "ContingencyType.h"
@@ -111,6 +123,7 @@
 #include "RateLimitType.h"
 #include "MessageData16.h"
 #include "FilterType.h"
+#include "PegOffsetType.h"
 #include "VarString8.h"
 #include "MessageData.h"
 
@@ -132,10 +145,10 @@ private:
     }
 
 public:
-    static const std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(0);
-    static const std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(308);
-    static const std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(1);
-    static const std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(0);
+    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(0);
+    static constexpr std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(308);
+    static constexpr std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(3);
+    static constexpr std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(1);
     static constexpr const char* SBE_SEMANTIC_VERSION = "5.2";
 
     enum MetaAttribute
@@ -205,12 +218,12 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaId() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(1);
+        return static_cast<std::uint16_t>(3);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaVersion() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(0);
+        return static_cast<std::uint16_t>(1);
     }
 
     SBE_NODISCARD static const char *sbeSemanticVersion() SBE_NOEXCEPT
@@ -306,7 +319,7 @@ public:
 
     SBE_NODISCARD std::uint64_t decodeLength() const
     {
-        OrdersResponse skipper(m_buffer, m_offset, m_bufferLength, sbeBlockLength(), m_actingVersion);
+        OrdersResponse skipper(m_buffer, m_offset, m_bufferLength, m_actingBlockLength, m_actingVersion);
         skipper.skip();
         return skipper.encodedLength();
     }
@@ -391,11 +404,11 @@ public:
             m_buffer = buffer;
             m_bufferLength = bufferLength;
             GroupSizeEncoding dimensions(buffer, *pos, bufferLength, actingVersion);
-            dimensions.blockLength(static_cast<std::uint16_t>(151));
+            dimensions.blockLength(static_cast<std::uint16_t>(162));
             dimensions.numInGroup(static_cast<std::uint32_t>(count));
             m_index = 0;
             m_count = count;
-            m_blockLength = 151;
+            m_blockLength = 162;
             m_actingVersion = actingVersion;
             m_initialPosition = *pos;
             m_positionPtr = pos;
@@ -409,7 +422,12 @@ public:
 
         static SBE_CONSTEXPR std::uint64_t sbeBlockLength() SBE_NOEXCEPT
         {
-            return 151;
+            return 162;
+        }
+
+        SBE_NODISCARD std::uint64_t sbeActingBlockLength() SBE_NOEXCEPT
+        {
+            return m_blockLength;
         }
 
         SBE_NODISCARD std::uint64_t sbePosition() const SBE_NOEXCEPT
@@ -1890,7 +1908,7 @@ public:
         {
             switch (metaAttribute)
             {
-                case MetaAttribute::PRESENCE: return "optional";
+                case MetaAttribute::PRESENCE: return "required";
                 default: return "";
             }
         }
@@ -1945,7 +1963,7 @@ public:
         {
             switch (metaAttribute)
             {
-                case MetaAttribute::PRESENCE: return "optional";
+                case MetaAttribute::PRESENCE: return "required";
                 default: return "";
             }
         }
@@ -2118,7 +2136,7 @@ public:
         {
             switch (metaAttribute)
             {
-                case MetaAttribute::PRESENCE: return "optional";
+                case MetaAttribute::PRESENCE: return "required";
                 default: return "";
             }
         }
@@ -2181,7 +2199,7 @@ public:
         {
             switch (metaAttribute)
             {
-                case MetaAttribute::PRESENCE: return "optional";
+                case MetaAttribute::PRESENCE: return "required";
                 default: return "";
             }
         }
@@ -2229,6 +2247,272 @@ public:
         {
             std::uint8_t val = (value);
             std::memcpy(m_buffer + m_offset + 150, &val, sizeof(std::uint8_t));
+            return *this;
+        }
+
+        SBE_NODISCARD static const char *pegPriceTypeMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+        {
+            switch (metaAttribute)
+            {
+                case MetaAttribute::PRESENCE: return "optional";
+                default: return "";
+            }
+        }
+
+        static SBE_CONSTEXPR std::uint16_t pegPriceTypeId() SBE_NOEXCEPT
+        {
+            return 30;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t pegPriceTypeSinceVersion() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD bool pegPriceTypeInActingVersion() SBE_NOEXCEPT
+        {
+            return m_actingVersion >= pegPriceTypeSinceVersion();
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t pegPriceTypeEncodingOffset() SBE_NOEXCEPT
+        {
+            return 151;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t pegPriceTypeEncodingLength() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD std::uint8_t pegPriceTypeRaw() const SBE_NOEXCEPT
+        {
+            if (m_actingVersion < 1)
+            {
+                return static_cast<std::uint8_t>(255);
+            }
+
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 151, sizeof(std::uint8_t));
+            return (val);
+        }
+
+        SBE_NODISCARD PegPriceType::Value pegPriceType() const
+        {
+            if (m_actingVersion < 1)
+            {
+                return PegPriceType::NULL_VALUE;
+            }
+
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 151, sizeof(std::uint8_t));
+            return PegPriceType::get((val));
+        }
+
+        Orders &pegPriceType(const PegPriceType::Value value) SBE_NOEXCEPT
+        {
+            std::uint8_t val = (value);
+            std::memcpy(m_buffer + m_offset + 151, &val, sizeof(std::uint8_t));
+            return *this;
+        }
+
+        SBE_NODISCARD static const char *pegOffsetTypeMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+        {
+            switch (metaAttribute)
+            {
+                case MetaAttribute::PRESENCE: return "optional";
+                default: return "";
+            }
+        }
+
+        static SBE_CONSTEXPR std::uint16_t pegOffsetTypeId() SBE_NOEXCEPT
+        {
+            return 31;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t pegOffsetTypeSinceVersion() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD bool pegOffsetTypeInActingVersion() SBE_NOEXCEPT
+        {
+            return m_actingVersion >= pegOffsetTypeSinceVersion();
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t pegOffsetTypeEncodingOffset() SBE_NOEXCEPT
+        {
+            return 152;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t pegOffsetTypeEncodingLength() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD std::uint8_t pegOffsetTypeRaw() const SBE_NOEXCEPT
+        {
+            if (m_actingVersion < 1)
+            {
+                return static_cast<std::uint8_t>(255);
+            }
+
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 152, sizeof(std::uint8_t));
+            return (val);
+        }
+
+        SBE_NODISCARD PegOffsetType::Value pegOffsetType() const
+        {
+            if (m_actingVersion < 1)
+            {
+                return PegOffsetType::NULL_VALUE;
+            }
+
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 152, sizeof(std::uint8_t));
+            return PegOffsetType::get((val));
+        }
+
+        Orders &pegOffsetType(const PegOffsetType::Value value) SBE_NOEXCEPT
+        {
+            std::uint8_t val = (value);
+            std::memcpy(m_buffer + m_offset + 152, &val, sizeof(std::uint8_t));
+            return *this;
+        }
+
+        SBE_NODISCARD static const char *pegOffsetValueMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+        {
+            switch (metaAttribute)
+            {
+                case MetaAttribute::PRESENCE: return "optional";
+                default: return "";
+            }
+        }
+
+        static SBE_CONSTEXPR std::uint16_t pegOffsetValueId() SBE_NOEXCEPT
+        {
+            return 32;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t pegOffsetValueSinceVersion() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD bool pegOffsetValueInActingVersion() SBE_NOEXCEPT
+        {
+            return m_actingVersion >= pegOffsetValueSinceVersion();
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t pegOffsetValueEncodingOffset() SBE_NOEXCEPT
+        {
+            return 153;
+        }
+
+        static SBE_CONSTEXPR std::uint8_t pegOffsetValueNullValue() SBE_NOEXCEPT
+        {
+            return SBE_NULLVALUE_UINT8;
+        }
+
+        static SBE_CONSTEXPR std::uint8_t pegOffsetValueMinValue() SBE_NOEXCEPT
+        {
+            return static_cast<std::uint8_t>(0);
+        }
+
+        static SBE_CONSTEXPR std::uint8_t pegOffsetValueMaxValue() SBE_NOEXCEPT
+        {
+            return static_cast<std::uint8_t>(254);
+        }
+
+        static SBE_CONSTEXPR std::size_t pegOffsetValueEncodingLength() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD std::uint8_t pegOffsetValue() const SBE_NOEXCEPT
+        {
+            if (m_actingVersion < 1)
+            {
+                return static_cast<std::uint8_t>(255);
+            }
+
+            std::uint8_t val;
+            std::memcpy(&val, m_buffer + m_offset + 153, sizeof(std::uint8_t));
+            return (val);
+        }
+
+        Orders &pegOffsetValue(const std::uint8_t value) SBE_NOEXCEPT
+        {
+            std::uint8_t val = (value);
+            std::memcpy(m_buffer + m_offset + 153, &val, sizeof(std::uint8_t));
+            return *this;
+        }
+
+        SBE_NODISCARD static const char *peggedPriceMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+        {
+            switch (metaAttribute)
+            {
+                case MetaAttribute::PRESENCE: return "optional";
+                default: return "";
+            }
+        }
+
+        static SBE_CONSTEXPR std::uint16_t peggedPriceId() SBE_NOEXCEPT
+        {
+            return 33;
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t peggedPriceSinceVersion() SBE_NOEXCEPT
+        {
+            return 1;
+        }
+
+        SBE_NODISCARD bool peggedPriceInActingVersion() SBE_NOEXCEPT
+        {
+            return m_actingVersion >= peggedPriceSinceVersion();
+        }
+
+        SBE_NODISCARD static SBE_CONSTEXPR std::size_t peggedPriceEncodingOffset() SBE_NOEXCEPT
+        {
+            return 154;
+        }
+
+        static SBE_CONSTEXPR std::int64_t peggedPriceNullValue() SBE_NOEXCEPT
+        {
+            return SBE_NULLVALUE_INT64;
+        }
+
+        static SBE_CONSTEXPR std::int64_t peggedPriceMinValue() SBE_NOEXCEPT
+        {
+            return INT64_C(-9223372036854775807);
+        }
+
+        static SBE_CONSTEXPR std::int64_t peggedPriceMaxValue() SBE_NOEXCEPT
+        {
+            return INT64_C(9223372036854775807);
+        }
+
+        static SBE_CONSTEXPR std::size_t peggedPriceEncodingLength() SBE_NOEXCEPT
+        {
+            return 8;
+        }
+
+        SBE_NODISCARD std::int64_t peggedPrice() const SBE_NOEXCEPT
+        {
+            if (m_actingVersion < 1)
+            {
+                return INT64_MIN;
+            }
+
+            std::int64_t val;
+            std::memcpy(&val, m_buffer + m_offset + 154, sizeof(std::int64_t));
+            return SBE_LITTLE_ENDIAN_ENCODE_64(val);
+        }
+
+        Orders &peggedPrice(const std::int64_t value) SBE_NOEXCEPT
+        {
+            std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+            std::memcpy(m_buffer + m_offset + 154, &val, sizeof(std::int64_t));
             return *this;
         }
 
@@ -2701,6 +2985,22 @@ public:
             builder << ", ";
             builder << R"("usedSor": )";
             builder << '"' << writer.usedSor() << '"';
+
+            builder << ", ";
+            builder << R"("pegPriceType": )";
+            builder << '"' << writer.pegPriceType() << '"';
+
+            builder << ", ";
+            builder << R"("pegOffsetType": )";
+            builder << '"' << writer.pegOffsetType() << '"';
+
+            builder << ", ";
+            builder << R"("pegOffsetValue": )";
+            builder << +writer.pegOffsetValue();
+
+            builder << ", ";
+            builder << R"("peggedPrice": )";
+            builder << +writer.peggedPrice();
 
             builder << ", ";
             builder << R"("symbol": )";

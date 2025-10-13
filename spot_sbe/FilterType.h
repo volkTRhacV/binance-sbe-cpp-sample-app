@@ -47,6 +47,11 @@ public:
         TrailingDelta = static_cast<std::uint8_t>(14),
         PercentPriceBySide = static_cast<std::uint8_t>(15),
         Notional = static_cast<std::uint8_t>(16),
+        MaxNumOrderLists = static_cast<std::uint8_t>(17),
+        ExchangeMaxNumOrderLists = static_cast<std::uint8_t>(18),
+        MaxNumOrderAmends = static_cast<std::uint8_t>(19),
+        MaxAsset = static_cast<std::uint8_t>(20),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -71,6 +76,11 @@ public:
             case static_cast<std::uint8_t>(14): return TrailingDelta;
             case static_cast<std::uint8_t>(15): return PercentPriceBySide;
             case static_cast<std::uint8_t>(16): return Notional;
+            case static_cast<std::uint8_t>(17): return MaxNumOrderLists;
+            case static_cast<std::uint8_t>(18): return ExchangeMaxNumOrderLists;
+            case static_cast<std::uint8_t>(19): return MaxNumOrderAmends;
+            case static_cast<std::uint8_t>(20): return MaxAsset;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -98,6 +108,11 @@ public:
             case TrailingDelta: return "TrailingDelta";
             case PercentPriceBySide: return "PercentPriceBySide";
             case Notional: return "Notional";
+            case MaxNumOrderLists: return "MaxNumOrderLists";
+            case ExchangeMaxNumOrderLists: return "ExchangeMaxNumOrderLists";
+            case MaxNumOrderAmends: return "MaxNumOrderAmends";
+            case MaxAsset: return "MaxAsset";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

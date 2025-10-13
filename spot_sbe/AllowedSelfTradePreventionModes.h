@@ -13,8 +13,18 @@
 #if __cplusplus >= 201703L
 #  include <string_view>
 #  define SBE_NODISCARD [[nodiscard]]
+#  if !defined(SBE_USE_STRING_VIEW)
+#    define SBE_USE_STRING_VIEW 1
+#  endif
 #else
 #  define SBE_NODISCARD
+#endif
+
+#if __cplusplus >= 202002L
+#  include <span>
+#  if !defined(SBE_USE_SPAN)
+#    define SBE_USE_SPAN 1
+#  endif
 #endif
 
 #if !defined(__STDC_LIMIT_MACROS)
@@ -192,12 +202,12 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaId() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(1);
+        return static_cast<std::uint16_t>(3);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeSchemaVersion() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(0);
+        return static_cast<std::uint16_t>(1);
     }
 
     AllowedSelfTradePreventionModes &clear()
@@ -331,6 +341,58 @@ public:
         return *this;
     }
 
+    static bool decrement(const std::uint8_t bits)
+    {
+        return (bits & (static_cast<std::uint8_t>(1) << 4u)) != 0;
+    }
+
+    static std::uint8_t decrement(const std::uint8_t bits, const bool value)
+    {
+        return value ? static_cast<std::uint8_t>(bits | (static_cast<std::uint8_t>(1) << 4u)) : static_cast<std::uint8_t>(bits & ~(static_cast<std::uint8_t>(1) << 4u));
+    }
+
+    SBE_NODISCARD bool decrement() const
+    {
+        std::uint8_t val;
+        std::memcpy(&val, m_buffer + m_offset, sizeof(std::uint8_t));
+        return ((val) & (static_cast<std::uint8_t>(1) << 4u)) != 0;
+    }
+
+    AllowedSelfTradePreventionModes &decrement(const bool value)
+    {
+        std::uint8_t bits;
+        std::memcpy(&bits, m_buffer + m_offset, sizeof(std::uint8_t));
+        bits = (value ? static_cast<std::uint8_t>((bits) | (static_cast<std::uint8_t>(1) << 4u)) : static_cast<std::uint8_t>((bits) & ~(static_cast<std::uint8_t>(1) << 4u)));
+        std::memcpy(m_buffer + m_offset, &bits, sizeof(std::uint8_t));
+        return *this;
+    }
+
+    static bool nonRepresentable(const std::uint8_t bits)
+    {
+        return (bits & (static_cast<std::uint8_t>(1) << 7u)) != 0;
+    }
+
+    static std::uint8_t nonRepresentable(const std::uint8_t bits, const bool value)
+    {
+        return value ? static_cast<std::uint8_t>(bits | (static_cast<std::uint8_t>(1) << 7u)) : static_cast<std::uint8_t>(bits & ~(static_cast<std::uint8_t>(1) << 7u));
+    }
+
+    SBE_NODISCARD bool nonRepresentable() const
+    {
+        std::uint8_t val;
+        std::memcpy(&val, m_buffer + m_offset, sizeof(std::uint8_t));
+        return ((val) & (static_cast<std::uint8_t>(1) << 7u)) != 0;
+    }
+
+    AllowedSelfTradePreventionModes &nonRepresentable(const bool value)
+    {
+        std::uint8_t bits;
+        std::memcpy(&bits, m_buffer + m_offset, sizeof(std::uint8_t));
+        bits = (value ? static_cast<std::uint8_t>((bits) | (static_cast<std::uint8_t>(1) << 7u)) : static_cast<std::uint8_t>((bits) & ~(static_cast<std::uint8_t>(1) << 7u)));
+        std::memcpy(m_buffer + m_offset, &bits, sizeof(std::uint8_t));
+        return *this;
+    }
+
     template<typename CharT, typename Traits>
     friend std::basic_ostream<CharT, Traits> & operator << (
         std::basic_ostream<CharT, Traits> &builder, AllowedSelfTradePreventionModes &writer)
@@ -367,6 +429,24 @@ public:
                 builder << ",";
             }
             builder << R"("expireBoth")";
+            atLeastOne = true;
+        }
+        if (writer.decrement())
+        {
+            if (atLeastOne)
+            {
+                builder << ",";
+            }
+            builder << R"("decrement")";
+            atLeastOne = true;
+        }
+        if (writer.nonRepresentable())
+        {
+            if (atLeastOne)
+            {
+                builder << ",";
+            }
+            builder << R"("nonRepresentable")";
         }
         builder << ']';
         return builder;

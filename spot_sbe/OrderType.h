@@ -37,6 +37,7 @@ public:
         TakeProfit = static_cast<std::uint8_t>(4),
         TakeProfitLimit = static_cast<std::uint8_t>(5),
         LimitMaker = static_cast<std::uint8_t>(6),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -51,6 +52,7 @@ public:
             case static_cast<std::uint8_t>(4): return TakeProfit;
             case static_cast<std::uint8_t>(5): return TakeProfitLimit;
             case static_cast<std::uint8_t>(6): return LimitMaker;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -68,6 +70,7 @@ public:
             case TakeProfit: return "TakeProfit";
             case TakeProfitLimit: return "TakeProfitLimit";
             case LimitMaker: return "LimitMaker";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 

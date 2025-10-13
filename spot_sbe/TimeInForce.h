@@ -33,6 +33,7 @@ public:
         Gtc = static_cast<std::uint8_t>(0),
         Ioc = static_cast<std::uint8_t>(1),
         Fok = static_cast<std::uint8_t>(2),
+        NonRepresentable = static_cast<std::uint8_t>(254),
         NULL_VALUE = static_cast<std::uint8_t>(255)
     };
 
@@ -43,6 +44,7 @@ public:
             case static_cast<std::uint8_t>(0): return Gtc;
             case static_cast<std::uint8_t>(1): return Ioc;
             case static_cast<std::uint8_t>(2): return Fok;
+            case static_cast<std::uint8_t>(254): return NonRepresentable;
             case static_cast<std::uint8_t>(255): return NULL_VALUE;
         }
 
@@ -56,6 +58,7 @@ public:
             case Gtc: return "Gtc";
             case Ioc: return "Ioc";
             case Fok: return "Fok";
+            case NonRepresentable: return "NonRepresentable";
             case NULL_VALUE: return "NULL_VALUE";
         }
 
